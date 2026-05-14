@@ -1,41 +1,1433 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin - WaterTik (Secure)</title>
+    <title>Panel Admin - WaterTik</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { 
-            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); 
-            color: #fff; 
-            min-height: 100vh;
-        }
-        .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            background: rgba(255,255,255,0.08);
-            backdrop-filter: blur(10px);
-            border-radius: 30px;
-            padding: 40px 30px;
-            text-align: center;
-            border: 1px solid rgba(0,242,254,0.3);
-        }
+        body { background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); color: #fff; min-height: 100vh; }
+        .login-container { max-width: 400px; margin: 100px auto; background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border-radius: 30px; padding: 40px 30px; text-align: center; border: 1px solid rgba(0,242,254,0.3); }
         .login-container h2 { margin-bottom: 20px; color: #00f2fe; }
-        .login-container input {
-            width: 100%;
-            padding: 14px;
-            margin: 10px 0;
-            background: rgba(0,0,0,0.4);
-            border: 1px solid #333;
-            border-radius: 30px;
-            color: white;
-            font-size: 16px;
+        .login-container input { width: 100%; padding: 14px; margin: 10px 0; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 30px; color: white; font-size: 16px; }
+        .login-container input:focus { border-color: #00f2fe; outline: none; }
+        .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #00f2fe, #2196F3); border: none; border-radius: 30px; color: #1a1a2e; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; }
+        .login-btn:hover { opacity: 0.9; }
+        .error-msg { color: #ff0050; margin-top: 10px; font-size: 14px; display: none; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .logout-btn { position: fixed; top: 20px; right: 20px; background: #ff0050; padding: 8px 16px; border-radius: 30px; cursor: pointer; z-index: 1000; font-size: 14px; }
+        .logout-btn:hover { background: #ff3366; }
+        h1 { margin-bottom: 10px; color: #00f2fe; display: flex; align-items: center; gap: 10px; }
+        .subtitle { margin-bottom: 20px; color: #aaa; font-size: 14px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; text-align: center; backdrop-filter: blur(10px); border: 1px solid rgba(0,242,254,0.2); }
+        .stat-number { font-size: 32px; font-weight: bold; color: #00f2fe; }
+        .stat-label { font-size: 12px; color: #aaa; margin-top: 5px; }
+        .card { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-radius: 20px; padding: 25px; margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.1); }
+        .card h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 20px; color: #00f2fe; }
+        table { width: 100%; border-collapse: collapse; overflow-x: auto; display: block; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { background: rgba(0,242,254,0.15); color: #00f2fe; font-weight: 600; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+        .premium-badge { background: linear-gradient(135deg, #FFD700, #FFA500); color: #1a1a2e; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .danger { color: #ff0050; }
+        .success { color: #4CAF50; }
+        .warning { color: #ff9800; }
+        .btn { padding: 8px 16px; background: linear-gradient(135deg, #00f2fe, #2196F3); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 12px; transition: all 0.3s; }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+        .btn-danger { background: linear-gradient(135deg, #ff0050, #ff0080); }
+        .btn-warning { background: linear-gradient(135deg, #ff9800, #f44336); }
+        .btn-success { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        .tab-btn { padding: 12px 24px; background: rgba(255,255,255,0.08); border: none; border-radius: 12px; color: white; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .tab-btn:hover { background: rgba(0,242,254,0.2); }
+        .tab-btn.active { background: linear-gradient(135deg, #00f2fe, #2196F3); color: #1a1a2e; font-weight: bold; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .blocked-user { background: rgba(255,0,80,0.15); border: 1px solid #ff0050; border-radius: 12px; padding: 12px 15px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .url-input { padding: 10px 15px; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 10px; color: white; outline: none; width: 100%; }
+        .id-highlight { font-family: monospace; background: rgba(0,242,254,0.2); padding: 2px 6px; border-radius: 6px; font-size: 11px; }
+        .search-box { padding: 10px 15px; background: rgba(0,0,0,0.4); border: 1px solid #00f2fe; border-radius: 10px; color: white; width: 250px; margin-bottom: 15px; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #00f2fe; color: #0a0a2e; padding: 10px 20px; border-radius: 40px; z-index: 9999; font-weight: bold; }
+        .admin-wa { background: rgba(37,211,102,0.15); border: 1px solid #25D366; border-radius: 15px; padding: 15px 20px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 20px; }
+        .winner-card { border-radius: 20px; padding: 20px; text-align: center; transition: all 0.3s; }
+        .winner-card.winner-1 { background: linear-gradient(135deg, rgba(255,215,0,0.25), rgba(255,165,0,0.15)); border: 2px solid #FFD700; }
+        .winner-card.winner-2 { background: linear-gradient(135deg, rgba(192,192,192,0.2), rgba(128,128,128,0.1)); border: 2px solid #C0C0C0; }
+        .winner-card.winner-3 { background: linear-gradient(135deg, rgba(205,127,50,0.2), rgba(139,69,19,0.1)); border: 2px solid #CD7F32; }
+        .winners-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 30px; }
+        .winner-id { font-family: monospace; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 8px; font-size: 11px; word-break: break-all; margin: 8px 0; }
+        .winner-status.claimed { color: #4CAF50; }
+        .winner-status.waiting { color: #ff9800; }
+        .suspicious-card { background: rgba(255,0,80,0.1); border: 1px solid #ff0050; border-radius: 12px; padding: 15px; margin: 10px 0; }
+        .maintenance-card { background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.05)); border: 1px solid #FFD700; margin-bottom: 20px; }
+        .maintenance-toggle { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: 0.4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #f44336; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .maintenance-status.active { color: #f44336; font-weight: bold; }
+        .maintenance-status.inactive { color: #4CAF50; font-weight: bold; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: linear-gradient(135deg, #1a1a3a, #0d1a3a); border-radius: 30px; width: 90%; max-width: 400px; padding: 30px; text-align: center; border: 2px solid #00f2fe; }
+        .modal-content input, .modal-content textarea { width: 100%; padding: 12px; margin: 10px 0; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 15px; color: white; }
+        .modal-content textarea { min-height: 80px; resize: vertical; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        .security-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        .input-group .url-input { flex: 1; }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <i class="fas fa-lock" style="font-size: 48px; color:#00f2fe"></i>
+        <h2>Admin Login</h2>
+        <input type="email" id="adminEmail" placeholder="Email Admin">
+        <input type="password" id="adminPassword" placeholder="Password">
+        <button class="login-btn" id="loginButton">Login</button>
+        <div id="loginError" class="error-msg">Email atau password salah!</div>
+    </div>
+
+    <div id="dashboard" style="display:none">
+        <div class="logout-btn" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        <div class="container">
+            <h1><i class="fas fa-shield-alt"></i> Panel Admin - WaterTik</h1>
+            <p class="subtitle">Kelola user, premium, blacklist, dan pemenang misi</p>
+            <div class="stats-grid" id="statsGrid"></div>
+
+            <div class="card maintenance-card">
+                <h2><i class="fas fa-tools"></i> Maintenance Mode</h2>
+                <div class="maintenance-toggle">
+                    <div>
+                        <p>Aktifkan mode maintenance untuk menonaktifkan akses user</p>
+                        <p>Status: <span id="maintenanceStatus" class="maintenance-status inactive">Offline</span></p>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="maintenanceToggle" onchange="toggleMaintenance()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="margin-top: 15px;">
+                    <input type="text" id="maintenanceMessage" class="url-input" placeholder="Pesan maintenance (contoh: Sedang dalam perbaikan)" style="width: 100%;">
+                    <button class="btn btn-sm" onclick="updateMaintenanceMessage()" style="margin-top: 5px;">Simpan Pesan</button>
+                </div>
+            </div>
+
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="users">📋 Data User</button>
+                <button class="tab-btn" data-tab="premium">💎 Premium</button>
+                <button class="tab-btn" data-tab="winners">🏆 Pemenang</button>
+                <button class="tab-btn" data-tab="blacklist">🚫 Blacklist</button>
+                <button class="tab-btn" data-tab="security">🔒 Keamanan</button>
+            </div>
+
+            <div id="usersTab" class="tab-content active">
+                <div class="card">
+                    <h2><i class="fas fa-users"></i> Data User</h2>
+                    <input type="text" id="searchUserInput" class="search-box" placeholder="🔍 Cari nama atau ID..." onkeyup="filterUsers()">
+                    <div style="overflow-x: auto;">
+                        <table id="userTable">
+                            <thead><tr><th>Nama</th><th>ID User</th><th>Premium</th><th>EXP</th><th>Misi</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <tbody id="userTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="premiumTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-crown"></i> Manajemen Premium</h2>
+                    <div class="input-group">
+                        <input type="text" id="premiumUserId" class="url-input" placeholder="ID User (WT-FIK-...)" style="min-width: 280px;">
+                        <select id="premiumPackage" class="url-input" style="width: 150px;">
+                            <option value="1">1 bulan - Rp10.000</option>
+                            <option value="3">3 bulan - Rp25.000</option>
+                            <option value="6">6 bulan - Rp50.000</option>
+                            <option value="12">12 bulan - Rp100.000</option>
+                        </select>
+                        <button class="btn" onclick="activatePremiumById()"><i class="fas fa-gem"></i> Aktifkan</button>
+                    </div>
+                    <h3>User Premium</h3>
+                    <div style="overflow-x:auto;">
+                        <table id="premiumTable">
+                            <thead><tr><th>Nama</th><th>ID User</th><th>Status</th><th>EXP Sampai</th><th>Sisa Hari</th><th>Aksi</th></tr></thead>
+                            <tbody id="premiumTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="winnersTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-trophy"></i> Pemenang Misi Ramadhan</h2>
+                    <p style="margin-bottom: 15px; color: #aaa; font-size: 12px;">
+                        <i class="fas fa-info-circle"></i> Pastikan ID User sesuai sebelum transfer hadiah. Hubungi pemenang via WhatsApp untuk verifikasi.
+                    </p>
+                    
+                    <div class="winners-grid">
+                        <div class="winner-card winner-1" id="winnerCard1">
+                            <div style="font-size: 48px;">🏆</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #FFD700; margin: 10px 0;">JUARA 1</div>
+                            <div class="winner-name" id="winner1Name">Belum ada</div>
+                            <div class="winner-id" id="winner1Id">-</div>
+                            <div class="winner-prize" style="font-size: 18px; font-weight: bold; color: #FFD700;">Rp50.000</div>
+                            <div class="winner-time" id="winner1Time" style="font-size: 10px; color: #aaa;">-</div>
+                            <div class="winner-status waiting" id="winner1Status">Menunggu</div>
+                            <div class="winner-actions" style="margin-top: 12px;">
+                                <a href="#" id="winner1Wa" class="btn-success btn-sm" target="_blank" style="display: inline-block; text-decoration: none; padding: 5px 10px; font-size: 11px;"><i class="fab fa-whatsapp"></i> Hubungi</a>
+                                <button class="btn-warning btn-sm" onclick="markClaimed(1)" id="claimBtn1">Tandai Diklaim</button>
+                            </div>
+                        </div>
+                        <div class="winner-card winner-2" id="winnerCard2">
+                            <div style="font-size: 48px;">🥈</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #C0C0C0; margin: 10px 0;">JUARA 2</div>
+                            <div class="winner-name" id="winner2Name">Belum ada</div>
+                            <div class="winner-id" id="winner2Id">-</div>
+                            <div class="winner-prize" style="font-size: 18px; font-weight: bold; color: #C0C0C0;">Rp20.000</div>
+                            <div class="winner-time" id="winner2Time" style="font-size: 10px; color: #aaa;">-</div>
+                            <div class="winner-status waiting" id="winner2Status">Menunggu</div>
+                            <div class="winner-actions" style="margin-top: 12px;">
+                                <a href="#" id="winner2Wa" class="btn-success btn-sm" target="_blank" style="display: inline-block; text-decoration: none; padding: 5px 10px; font-size: 11px;"><i class="fab fa-whatsapp"></i> Hubungi</a>
+                                <button class="btn-warning btn-sm" onclick="markClaimed(2)" id="claimBtn2">Tandai Diklaim</button>
+                            </div>
+                        </div>
+                        <div class="winner-card winner-3" id="winnerCard3">
+                            <div style="font-size: 48px;">🥉</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #CD7F32; margin: 10px 0;">JUARA 3</div>
+                            <div class="winner-name" id="winner3Name">Belum ada</div>
+                            <div class="winner-id" id="winner3Id">-</div>
+                            <div class="winner-prize" style="font-size: 18px; font-weight: bold; color: #CD7F32;">Rp10.000</div>
+                            <div class="winner-time" id="winner3Time" style="font-size: 10px; color: #aaa;">-</div>
+                            <div class="winner-status waiting" id="winner3Status">Menunggu</div>
+                            <div class="winner-actions" style="margin-top: 12px;">
+                                <a href="#" id="winner3Wa" class="btn-success btn-sm" target="_blank" style="display: inline-block; text-decoration: none; padding: 5px 10px; font-size: 11px;"><i class="fab fa-whatsapp"></i> Hubungi</a>
+                                <button class="btn-warning btn-sm" onclick="markClaimed(3)" id="claimBtn3">Tandai Diklaim</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 20px 0 10px;"><i class="fas fa-history"></i> Riwayat Pemenang</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%;">
+                            <thead>
+                                <tr><th>Rank</th><th>Nama</th><th>ID User</th><th>Waktu Menang</th><th>Status</th><th>Aksi</th></tr>
+                            </thead>
+                            <tbody id="winnersList"></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="admin-wa">
+                        <span><i class="fab fa-whatsapp"></i> Admin: 089699024654</span>
+                        <a href="https://wa.me/6289699024654" class="btn-success btn" target="_blank">Hubungi Admin</a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="blacklistTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-ban"></i> Blacklist</h2>
+                    <div class="input-group">
+                        <input type="text" id="blockUserId" placeholder="ID User" class="url-input">
+                        <input type="text" id="blockReason" placeholder="Alasan blokir" class="url-input">
+                        <button class="btn-danger" onclick="showBlockModal()">Blokir User</button>
+                    </div>
+                    <div id="blockedList"></div>
+                </div>
+            </div>
+
+            <div id="securityTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-shield-alt"></i> Keamanan & Log</h2>
+                    <div class="security-stats" id="securityStats"></div>
+                    <div id="suspiciousList"></div>
+                </div>
+            </div>
+
+            <div class="footer"><p>© 2026 WaterTik Admin Panel | 3 Pemenang (Rp50k, Rp20k, Rp10k)</p></div>
+        </div>
+    </div>
+
+    <!-- Modal Blokir -->
+    <div id="blockModal" class="modal-overlay">
+        <div class="modal-content">
+            <i class="fas fa-ban" style="font-size: 48px; color: #ff0050; margin-bottom: 15px;"></i>
+            <h3>Blokir User</h3>
+            <input type="text" id="blockModalUserId" placeholder="ID User" readonly style="background: rgba(255,0,80,0.2);">
+            <textarea id="blockModalReason" placeholder="Alasan blokir (wajib diisi)"></textarea>
+            <div class="modal-buttons">
+                <button class="btn-danger" onclick="confirmBlock()">Blokir</button>
+                <button class="btn" onclick="closeBlockModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQZ-ce5I9-5UvD19cPK6qKj8kIXaMhOek",
+            authDomain: "watertik-466a0.firebaseapp.com",
+            projectId: "watertik-466a0",
+            storageBucket: "watertik-466a0.firebasestorage.app",
+            messagingSenderId: "477111819819",
+            appId: "1:477111819819:web:09626fc68a93f6b372146e"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentAdmin = null;
+        let allUsers = [];
+        let pendingBlockUserId = null;
+
+        // ==================== LOGIN ====================
+        async function adminLogin() {
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            
+            if (!email || !password) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'Masukkan email dan password!';
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+                return;
+            }
+            
+            try {
+                const userCred = await auth.signInWithEmailAndPassword(email, password);
+                currentAdmin = userCred.user;
+                localStorage.setItem('watertik_admin', JSON.stringify({ uid: currentAdmin.uid, email: currentAdmin.email, loginTime: Date.now() }));
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                loadAllData();
+                showToast(`Welcome, ${currentAdmin.email}!`);
+            } catch(error) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'Login gagal: ' + error.message;
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+            }
+        }
+
+        async function adminLogout() {
+            await auth.signOut();
+            localStorage.removeItem('watertik_admin');
+            currentAdmin = null;
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            showToast('Logged out');
+        }
+
+        function checkAdminSession() {
+            const saved = localStorage.getItem('watertik_admin');
+            if (saved) {
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentAdmin = user;
+                        document.getElementById('loginContainer').style.display = 'none';
+                        document.getElementById('dashboard').style.display = 'block';
+                        loadAllData();
+                    }
+                });
+            }
+        }
+
+        function showToast(msg) {
+            let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // ==================== LOAD DATA ====================
+        async function loadAllData() {
+            if (!currentAdmin) return;
+            try {
+                const usersSnap = await db.collection('users').get();
+                allUsers = [];
+                usersSnap.forEach(doc => { let u = doc.data(); u.uid = doc.id; allUsers.push(u); });
+                updateStats();
+                renderUserTable();
+                renderPremiumTable();
+                loadWinners();
+                loadBlockedList();
+                detectMultipleAccounts();
+            } catch(error) {
+                console.error("Error loading data:", error);
+                showToast("Error loading data: " + error.message);
+            }
+        }
+
+        function updateStats() {
+            let premiumActive = allUsers.filter(u => u.isPremium && u.premiumExpiry && new Date(u.premiumExpiry) > new Date()).length;
+            let misiSelesai = allUsers.filter(u => u.missionCompleted).length;
+            let blocked = allUsers.filter(u => u.blocked).length;
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card"><div class="stat-number">${allUsers.length}</div><div class="stat-label">Total User</div></div>
+                <div class="stat-card"><div class="stat-number">${premiumActive}</div><div class="stat-label">Premium Aktif</div></div>
+                <div class="stat-card"><div class="stat-number">${misiSelesai}</div><div class="stat-label">Misi Selesai</div></div>
+                <div class="stat-card"><div class="stat-number">${blocked}</div><div class="stat-label">Diblokir</div></div>
+            `;
+        }
+
+        function filterUsers() { renderUserTable(); }
+
+        function renderUserTable() {
+            let searchTerm = document.getElementById('searchUserInput')?.value.toLowerCase() || '';
+            let filtered = allUsers.filter(u => (u.name && u.name.toLowerCase().includes(searchTerm)) || (u.userId && u.userId.toLowerCase().includes(searchTerm)));
+            let tbody = document.getElementById('userTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            filtered.forEach(user => {
+                let isPremiumActive = user.isPremium && user.premiumExpiry && new Date(user.premiumExpiry) > new Date();
+                let expiryText = user.premiumExpiry ? new Date(user.premiumExpiry).toLocaleDateString('id-ID') : '-';
+                let row = tbody.insertRow();
+                row.insertCell(0).innerHTML = user.name || '-';
+                row.insertCell(1).innerHTML = `<span class="id-highlight">${user.userId || '-'}</span>`;
+                row.insertCell(2).innerHTML = isPremiumActive ? '<span class="premium-badge">Premium</span>' : 'Free';
+                row.insertCell(3).innerHTML = isPremiumActive ? expiryText : '-';
+                row.insertCell(4).innerHTML = user.missionCompleted ? '✅ Selesai' : '❌ Belum';
+                row.insertCell(5).innerHTML = user.blocked ? '<span class="danger">Diblokir</span>' : '<span class="success">Aktif</span>';
+                row.insertCell(6).innerHTML = `
+                    <button class="btn btn-sm" onclick="extendPremium('${user.userId}')">➕ Perpanjang</button>
+                    ${!user.blocked ? `<button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>` : `<button class="btn-warning btn-sm" onclick="unblockUserById('${user.userId}')">Unblock</button>`}
+                `;
+            });
+        }
+
+        function renderPremiumTable() {
+            let tbody = document.getElementById('premiumTableBody');
+            if (!tbody) return;
+            let now = new Date();
+            let premiumUsers = allUsers.filter(u => u.isPremium);
+            tbody.innerHTML = '';
+            if (premiumUsers.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada user premium</td></tr>'; return; }
+            premiumUsers.forEach(u => {
+                let expiry = u.premiumExpiry ? new Date(u.premiumExpiry) : null;
+                let isActive = expiry && expiry > now;
+                let daysLeft = isActive ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : 0;
+                let row = tbody.insertRow();
+                row.insertCell(0).innerHTML = u.name || '-';
+                row.insertCell(1).innerHTML = `<span class="id-highlight">${u.userId || '-'}</span>`;
+                row.insertCell(2).innerHTML = isActive ? '<span class="success">✅ Aktif</span>' : '<span class="danger">❌ Expired</span>';
+                row.insertCell(3).innerHTML = expiry ? expiry.toLocaleDateString('id-ID') : '-';
+                row.insertCell(4).innerHTML = isActive ? daysLeft + ' hari' : '-';
+                row.insertCell(5).innerHTML = `<button class="btn-warning btn-sm" onclick="extendPremium('${u.userId}')">Perpanjang</button>`;
+            });
+        }
+
+        async function activatePremiumById() {
+            let userId = document.getElementById('premiumUserId').value.trim();
+            let months = parseInt(document.getElementById('premiumPackage').value);
+            if (!userId) { alert('Masukkan ID User!'); return; }
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) { alert('User tidak ditemukan!'); return; }
+                let doc = userDoc.docs[0];
+                let userData = doc.data();
+                let currentExpiry = userData.premiumExpiry ? new Date(userData.premiumExpiry) : new Date();
+                if (currentExpiry < new Date()) currentExpiry = new Date();
+                currentExpiry.setMonth(currentExpiry.getMonth() + months);
+                await doc.ref.update({ isPremium: true, premiumExpiry: currentExpiry.toISOString() });
+                showToast(`✅ Premium aktif untuk ${userData.name} (${months} bulan)`);
+                document.getElementById('premiumUserId').value = '';
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        }
+
+        window.extendPremium = async function(userId) {
+            let months = prompt('Masukkan jumlah bulan (1-12):', '1');
+            if (!months) return;
+            months = parseInt(months);
+            if (months < 1 || months > 12) { alert('Masukkan angka 1-12'); return; }
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) return;
+                let doc = userDoc.docs[0];
+                let userData = doc.data();
+                let currentExpiry = userData.premiumExpiry ? new Date(userData.premiumExpiry) : new Date();
+                if (currentExpiry < new Date()) currentExpiry = new Date();
+                currentExpiry.setMonth(currentExpiry.getMonth() + months);
+                await doc.ref.update({ premiumExpiry: currentExpiry.toISOString(), isPremium: true });
+                showToast(`✅ Premium diperpanjang ${months} bulan untuk ${userData.name}`);
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        };
+
+        // ==================== BLACKLIST ====================
+        function prepareBlock(userId, userName) {
+            pendingBlockUserId = userId;
+            document.getElementById('blockModalUserId').value = `${userName} (${userId})`;
+            document.getElementById('blockModalReason').value = '';
+            document.getElementById('blockModal').classList.add('active');
+        }
+
+        function showBlockModal() {
+            let userId = document.getElementById('blockUserId').value.trim();
+            let reason = document.getElementById('blockReason').value.trim();
+            if (!userId) { alert('Masukkan ID User!'); return; }
+            pendingBlockUserId = userId;
+            document.getElementById('blockModalUserId').value = userId;
+            document.getElementById('blockModalReason').value = reason;
+            document.getElementById('blockModal').classList.add('active');
+        }
+
+        async function confirmBlock() {
+            let userId = pendingBlockUserId;
+            let reason = document.getElementById('blockModalReason').value.trim();
+            if (!reason) { alert('Alasan blokir wajib diisi!'); return; }
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) { alert('User tidak ditemukan'); return; }
+                let doc = userDoc.docs[0];
+                await doc.ref.update({ blocked: true, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                await db.collection('blocked').doc(doc.id).set({ userId: userId, name: doc.data().name, reason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                showToast(`🚫 User ${doc.data().name} diblokir`);
+                closeBlockModal();
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        }
+
+        function closeBlockModal() {
+            document.getElementById('blockModal').classList.remove('active');
+            pendingBlockUserId = null;
+        }
+
+        window.unblockUserById = async function(userId) {
+            if (!confirm('Yakin ingin membuka blokir user ini?')) return;
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) return;
+                let doc = userDoc.docs[0];
+                await doc.ref.update({ blocked: false, blockedReason: null, blockedAt: null, blockedBy: null });
+                await db.collection('blocked').doc(doc.id).delete();
+                showToast(`✅ User ${doc.data().name} diunblock`);
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        };
+
+        async function loadBlockedList() {
+            try {
+                let blockedSnap = await db.collection('blocked').get();
+                let container = document.getElementById('blockedList');
+                if (!container) return;
+                if (blockedSnap.empty) { container.innerHTML = '<p>Tidak ada user diblokir</p>'; return; }
+                let html = '<h3>Daftar User Diblokir</h3>';
+                blockedSnap.forEach(doc => {
+                    let data = doc.data();
+                    html += `<div class="blocked-user"><div><strong>${data.name || '-'}</strong> (${data.userId})<br><span class="danger">Alasan: ${data.reason || '-'}</span><br><small>Oleh: ${data.blockedBy} | ${new Date(data.blockedAt).toLocaleString()}</small></div><button class="btn-warning btn-sm" onclick="unblockUserById('${data.userId}')">Unblock</button></div>`;
+                });
+                container.innerHTML = html;
+            } catch(error) { console.error(error); }
+        }
+
+        // ==================== WINNERS (FIXED) ====================
+        async function loadWinners() {
+            try {
+                const winnersDoc = await db.collection('global').doc('winners').get();
+                let winners = [];
+                if (winnersDoc.exists && winnersDoc.data().winners) {
+                    winners = winnersDoc.data().winners;
+                }
+                
+                // Update winner cards for rank 1,2,3
+                for (let rank = 1; rank <= 3; rank++) {
+                    const winner = winners.find(w => w.rank === rank);
+                    const nameEl = document.getElementById(`winner${rank}Name`);
+                    const idEl = document.getElementById(`winner${rank}Id`);
+                    const timeEl = document.getElementById(`winner${rank}Time`);
+                    const statusEl = document.getElementById(`winner${rank}Status`);
+                    const waLink = document.getElementById(`winner${rank}Wa`);
+                    const claimBtn = document.getElementById(`claimBtn${rank}`);
+                    
+                    if (winner) {
+                        if (nameEl) nameEl.innerHTML = winner.name || '-';
+                        if (idEl) idEl.innerHTML = winner.userId || '-';
+                        if (timeEl) timeEl.innerHTML = winner.time ? new Date(winner.time).toLocaleString() : '-';
+                        if (statusEl) {
+                            statusEl.innerHTML = winner.claimed ? '✅ Sudah Diklaim' : '⏳ Menunggu Klaim';
+                            statusEl.className = winner.claimed ? 'winner-status claimed' : 'winner-status waiting';
+                        }
+                        if (waLink) {
+                            waLink.href = `https://wa.me/6289699024654?text=Assalamualaikum%20${encodeURIComponent(winner.name)}%2C%20Selamat%20Anda%20menjadi%20pemenang%20juara%20${rank}%20Misi%20Ramadhan%20WaterTik.%20Silakan%20klaim%20hadiah%20Anda.%20Terima%20kasih.`;
+                        }
+                        if (claimBtn) {
+                            claimBtn.style.display = winner.claimed ? 'none' : 'inline-block';
+                        }
+                    } else {
+                        if (nameEl) nameEl.innerHTML = 'Belum ada';
+                        if (idEl) idEl.innerHTML = '-';
+                        if (timeEl) timeEl.innerHTML = '-';
+                        if (statusEl) {
+                            statusEl.innerHTML = 'Belum ada pemenang';
+                            statusEl.className = 'winner-status waiting';
+                        }
+                        if (claimBtn) claimBtn.style.display = 'none';
+                    }
+                }
+                
+                // Update winners list table
+                const winnersList = document.getElementById('winnersList');
+                if (!winnersList) return;
+                
+                if (winners.length === 0) {
+                    winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
+                } else {
+                    winnersList.innerHTML = winners.sort((a,b) => a.rank - b.rank).map(w => {
+                        const rankIcon = w.rank === 1 ? '🏆' : (w.rank === 2 ? '🥈' : '🥉');
+                        return `
+                            <tr>
+                                <td>${rankIcon} Pemenang ${w.rank}</td>
+                                <td><strong>${w.name}</strong></td>
+                                <td><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:6px;">${w.userId}</code></td>
+                                <td>${new Date(w.time).toLocaleString()}</td>
+                                <td>${w.claimed ? '<span class="success">✅ Diklaim</span>' : '<span class="warning">⏳ Menunggu</span>'}</td>
+                                <td>${!w.claimed ? `<button class="btn-warning btn-sm" onclick="markClaimed(${w.rank})">Tandai Diklaim</button>` : '-'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(error) {
+                console.error("Error loading winners:", error);
+                const winnersList = document.getElementById('winnersList');
+                if (winnersList) winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff0050">Error loading winners</td></tr>';
+            }
+        }
+
+        window.markClaimed = async function(rank) {
+            if (!confirm(`Yakin ingin menandai pemenang juara ${rank} sudah mengklaim hadiah?`)) return;
+            try {
+                const winnersDoc = await db.collection('global').doc('winners').get();
+                let winners = [];
+                if (winnersDoc.exists && winnersDoc.data().winners) {
+                    winners = winnersDoc.data().winners;
+                }
+                const winnerIndex = winners.findIndex(w => w.rank === rank);
+                if (winnerIndex !== -1) {
+                    winners[winnerIndex].claimed = true;
+                    winners[winnerIndex].claimedAt = new Date().toISOString();
+                    winners[winnerIndex].claimedBy = currentAdmin?.email || 'admin';
+                    await db.collection('global').doc('winners').set({ winners: winners, lastSync: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast(`✅ Pemenang juara ${rank} telah ditandai sudah klaim hadiah`);
+                    loadWinners();
+                }
+            } catch(error) {
+                showToast("Error: " + error.message);
+            }
+        };
+
+        // ==================== KEAMANAN & LOG (FIXED) ====================
+        async function detectMultipleAccounts() {
+            try {
+                const usersSnap = await db.collection('users').get();
+                let fpMap = new Map();
+                let totalUsers = 0;
+                
+                usersSnap.forEach(doc => {
+                    let user = doc.data();
+                    totalUsers++;
+                    let fingerprint = user.fingerprint || null;
+                    if (fingerprint && fingerprint !== '' && !user.blocked) {
+                        if (!fpMap.has(fingerprint)) fpMap.set(fingerprint, []);
+                        fpMap.get(fingerprint).push({ name: user.name, userId: user.userId || '-', docId: doc.id });
+                    }
+                });
+                
+                let suspicious = [];
+                for (let [fp, users] of fpMap.entries()) {
+                    if (users.length > 1) suspicious.push({ fingerprint: fp, users: users, count: users.length });
+                }
+                
+                const container = document.getElementById('suspiciousList');
+                const statsContainer = document.getElementById('securityStats');
+                
+                if (statsContainer) {
+                    statsContainer.innerHTML = `
+                        <div class="stat-card"><div class="stat-number">${totalUsers}</div><div class="stat-label">Total User</div></div>
+                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.length}</div><div class="stat-label">Multiple Groups</div></div>
+                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.reduce((a,b)=>a+b.count,0)}</div><div class="stat-label">Akun Terindikasi</div></div>
+                    `;
+                }
+                
+                if (!container) return;
+                if (suspicious.length === 0) {
+                    container.innerHTML = `<div style="background:rgba(76,175,80,0.1);border:1px solid #4CAF50;border-radius:12px;padding:15px;text-align:center"><i class="fas fa-shield-alt" style="color:#4CAF50;font-size:32px"></i><p><strong>✅ AMAN</strong><br>Tidak terdeteksi multiple account</p></div>`;
+                } else {
+                    container.innerHTML = `<div style="background:rgba(255,0,80,0.15);border:1px solid #ff0050;border-radius:12px;padding:15px;margin-bottom:15px"><i class="fas fa-exclamation-triangle" style="color:#ff0050"></i> <strong>⚠️ Ditemukan ${suspicious.length} kelompok multiple account</strong></div>${suspicious.map((s,idx)=>`<div class="suspicious-card"><div><strong>Kelompok ${idx+1}:</strong> <code>${s.fingerprint.substring(0,35)}...</code> <span class="danger">${s.count} akun</span></div><ul>${s.users.map(u=>`<li>${u.name} (${u.userId})</li>`).join('')}</ul><button class="btn-warning btn-sm" onclick="blockAllByFingerprint('${s.fingerprint}')">Blokir Semua</button></div>`).join('')}`;
+                }
+            } catch(error) {
+                document.getElementById('suspiciousList').innerHTML = `<div style="background:rgba(255,0,80,0.1);padding:15px;text-align:center">Error: ${error.message}<br><button class="btn btn-sm" onclick="detectMultipleAccounts()">Coba Lagi</button></div>`;
+            }
+        }
+
+        window.blockAllByFingerprint = async function(fingerprint) {
+            if (!confirm('⚠️ Blokir SEMUA akun dengan fingerprint ini?')) return;
+            try {
+                let userDocs = await db.collection('users').where('fingerprint', '==', fingerprint).get();
+                let reason = 'Multiple account (melanggar aturan)';
+                for (let doc of userDocs.docs) {
+                    await doc.ref.update({ blocked: true, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                }
+                showToast(`✅ ${userDocs.size} akun diblokir`);
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        };
+
+        // ==================== MAINTENANCE (FIRESTORE) ====================
+        async function toggleMaintenance() {
+            const toggle = document.getElementById('maintenanceToggle');
+            const statusSpan = document.getElementById('maintenanceStatus');
+            const isActive = toggle.checked;
+            const message = document.getElementById('maintenanceMessage').value.trim() || (isActive ? 'Sedang maintenance. Kembali lagi nanti!' : '');
+            try {
+                await db.collection('settings').doc('maintenance').set({ isActive: isActive, message: message, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentAdmin?.email });
+                statusSpan.innerHTML = isActive ? 'Active (Maintenance)' : 'Offline (Normal)';
+                statusSpan.className = isActive ? 'maintenance-status active' : 'maintenance-status inactive';
+                showToast(isActive ? '🔧 Maintenance ON' : '✅ Maintenance OFF');
+            } catch(error) { showToast('Error: ' + error.message); toggle.checked = !isActive; }
+        }
+
+        async function loadMaintenanceStatus() {
+            try {
+                const doc = await db.collection('settings').doc('maintenance').get();
+                const toggle = document.getElementById('maintenanceToggle');
+                const statusSpan = document.getElementById('maintenanceStatus');
+                const msgInput = document.getElementById('maintenanceMessage');
+                if (doc.exists && doc.data().isActive) {
+                    if (toggle) toggle.checked = true;
+                    if (statusSpan) { statusSpan.innerHTML = 'Active (Maintenance)'; statusSpan.className = 'maintenance-status active'; }
+                    if (msgInput && doc.data().message) msgInput.value = doc.data().message;
+                } else {
+                    if (toggle) toggle.checked = false;
+                    if (statusSpan) { statusSpan.innerHTML = 'Offline (Normal)'; statusSpan.className = 'maintenance-status inactive'; }
+                }
+            } catch(error) { console.error(error); }
+        }
+
+        async function updateMaintenanceMessage() {
+            const message = document.getElementById('maintenanceMessage').value.trim();
+            try {
+                await db.collection('settings').doc('maintenance').set({ message: message }, { merge: true });
+                showToast('✅ Pesan maintenance disimpan');
+            } catch(error) { showToast('Error: ' + error.message); }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loginButton')?.addEventListener('click', adminLogin);
+            document.getElementById('logoutButton')?.addEventListener('click', adminLogout);
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', function() { switchTab(this.getAttribute('data-tab')); }));
+            checkAdminSession();
+            loadMaintenanceStatus();
+        });
+
+        setInterval(() => { if (currentAdmin) loadAllData(); }, 30000);
+        
+        window.prepareBlock = prepareBlock; window.confirmBlock = confirmBlock; window.closeBlockModal = closeBlockModal;
+        window.toggleMaintenance = toggleMaintenance; window.updateMaintenanceMessage = updateMaintenanceMessage;
+        window.blockAllByFingerprint = blockAllByFingerprint; window.markClaimed = markClaimed;
+    </script>
+</body>
+</html>        .admin-wa { background: rgba(37,211,102,0.15); border: 1px solid #25D366; border-radius: 15px; padding: 15px 20px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 20px; }
+        .winner-card { border-radius: 20px; padding: 20px; text-align: center; transition: all 0.3s; }
+        .winner-card.winner-1 { background: linear-gradient(135deg, rgba(255,215,0,0.25), rgba(255,165,0,0.15)); border: 2px solid #FFD700; }
+        .winner-card.winner-2 { background: linear-gradient(135deg, rgba(192,192,192,0.2), rgba(128,128,128,0.1)); border: 2px solid #C0C0C0; }
+        .winner-card.winner-3 { background: linear-gradient(135deg, rgba(205,127,50,0.2), rgba(139,69,19,0.1)); border: 2px solid #CD7F32; }
+        .winners-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 30px; }
+        .winner-id { font-family: monospace; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 8px; font-size: 11px; word-break: break-all; margin: 8px 0; }
+        .winner-status.claimed { color: #4CAF50; }
+        .winner-status.waiting { color: #ff9800; }
+        .suspicious-card { background: rgba(255,0,80,0.1); border: 1px solid #ff0050; border-radius: 12px; padding: 15px; margin: 10px 0; }
+        .maintenance-card { background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.05)); border: 1px solid #FFD700; margin-bottom: 20px; }
+        .maintenance-toggle { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: 0.4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #f44336; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .maintenance-status.active { color: #f44336; font-weight: bold; }
+        .maintenance-status.inactive { color: #4CAF50; font-weight: bold; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: linear-gradient(135deg, #1a1a3a, #0d1a3a); border-radius: 30px; width: 90%; max-width: 400px; padding: 30px; text-align: center; border: 2px solid #00f2fe; }
+        .modal-content input, .modal-content textarea { width: 100%; padding: 12px; margin: 10px 0; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 15px; color: white; }
+        .modal-content textarea { min-height: 80px; resize: vertical; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        .security-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        .input-group .url-input { flex: 1; }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <i class="fas fa-lock" style="font-size: 48px; color:#00f2fe"></i>
+        <h2>Admin Login</h2>
+        <input type="email" id="adminEmail" placeholder="Email Admin">
+        <input type="password" id="adminPassword" placeholder="Password">
+        <button class="login-btn" id="loginButton">Login</button>
+        <div id="loginError" class="error-msg">Email atau password salah!</div>
+    </div>
+
+    <div id="dashboard" style="display:none">
+        <div class="logout-btn" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        <div class="container">
+            <h1><i class="fas fa-shield-alt"></i> Panel Admin - WaterTik</h1>
+            <p class="subtitle">Kelola user, premium, blacklist, dan pemenang misi</p>
+            <div class="stats-grid" id="statsGrid"></div>
+
+            <div class="card maintenance-card">
+                <h2><i class="fas fa-tools"></i> Maintenance Mode</h2>
+                <div class="maintenance-toggle">
+                    <div>
+                        <p>Aktifkan mode maintenance untuk menonaktifkan akses user</p>
+                        <p>Status: <span id="maintenanceStatus" class="maintenance-status inactive">Offline</span></p>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="maintenanceToggle" onchange="toggleMaintenance()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="margin-top: 15px;">
+                    <input type="text" id="maintenanceMessage" class="url-input" placeholder="Pesan maintenance (contoh: Sedang dalam perbaikan)" style="width: 100%;">
+                    <button class="btn btn-sm" onclick="updateMaintenanceMessage()" style="margin-top: 5px;">Simpan Pesan</button>
+                </div>
+            </div>
+
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="users">📋 Data User</button>
+                <button class="tab-btn" data-tab="premium">💎 Premium</button>
+                <button class="tab-btn" data-tab="winners">🏆 Pemenang</button>
+                <button class="tab-btn" data-tab="blacklist">🚫 Blacklist</button>
+                <button class="tab-btn" data-tab="security">🔒 Keamanan</button>
+            </div>
+
+            <div id="usersTab" class="tab-content active">
+                <div class="card">
+                    <h2><i class="fas fa-users"></i> Data User</h2>
+                    <input type="text" id="searchUserInput" class="search-box" placeholder="🔍 Cari nama atau ID..." onkeyup="filterUsers()">
+                    <div style="overflow-x: auto;">
+                        <table id="userTable">
+                            <thead><tr><th>Nama</th><th>ID User</th><th>Premium</th><th>EXP</th><th>Misi</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <tbody id="userTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="premiumTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-crown"></i> Manajemen Premium</h2>
+                    <div class="input-group">
+                        <input type="text" id="premiumUserId" class="url-input" placeholder="ID User (WT-FIK-...)" style="min-width: 280px;">
+                        <select id="premiumPackage" class="url-input" style="width: 150px;">
+                            <option value="1">1 bulan - Rp10.000</option>
+                            <option value="3">3 bulan - Rp25.000</option>
+                            <option value="6">6 bulan - Rp50.000</option>
+                            <option value="12">12 bulan - Rp100.000</option>
+                        </select>
+                        <button class="btn" onclick="activatePremiumById()"><i class="fas fa-gem"></i> Aktifkan</button>
+                    </div>
+                    <h3>User Premium</h3>
+                    <div style="overflow-x:auto;">
+                        <table id="premiumTable">
+                            <thead><tr><th>Nama</th><th>ID User</th><th>Status</th><th>EXP Sampai</th><th>Sisa Hari</th><th>Aksi</th></tr></thead>
+                            <tbody id="premiumTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="winnersTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-trophy"></i> Pemenang Misi Ramadhan</h2>
+                    <p style="margin-bottom: 15px; color: #aaa; font-size: 12px;">
+                        <i class="fas fa-info-circle"></i> Pastikan ID User sesuai sebelum transfer hadiah. Hubungi pemenang via WhatsApp untuk verifikasi.
+                    </p>
+                    
+                    <div class="winners-grid">
+                        <div class="winner-card winner-1" id="winnerCard1">
+                            <div style="font-size: 48px;">🏆</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #FFD700; margin: 10px 0;">JUARA 1</div>
+                            <div class="winner-name" id="winner1Name">Belum ada</div>
+                            <div class="winner-id" id="winner1Id">-</div>
+                            <div class="winner-prize" style="font-size: 18px; font-weight: bold; color: #FFD700;">Rp50.000</div>
+                            <div class="winner-time" id="winner1Time" style="font-size: 10px; color: #aaa;">-</div>
+                            <div class="winner-status waiting" id="winner1Status">Menunggu</div>
+                            <div class="winner-actions" style="margin-top: 12px;">
+                                <a href="#" id="winner1Wa" class="btn-success btn-sm" target="_blank" style="display: inline-block; text-decoration: none; padding: 5px 10px; font-size: 11px;"><i class="fab fa-whatsapp"></i> Hubungi</a>
+                                <button class="btn-warning btn-sm" onclick="markClaimed(1)" id="claimBtn1">Tandai Diklaim</button>
+                            </div>
+                        </div>
+                        <div class="winner-card winner-2" id="winnerCard2">
+                            <div style="font-size: 48px;">🥈</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #C0C0C0; margin: 10px 0;">JUARA 2</div>
+                            <div class="winner-name" id="winner2Name">Belum ada</div>
+                            <div class="winner-id" id="winner2Id">-</div>
+                            <div class="winner-prize" style="font-size: 18px; font-weight: bold; color: #C0C0C0;">Rp20.000</div>
+                            <div class="winner-time" id="winner2Time" style="font-size: 10px; color: #aaa;">-</div>
+                            <div class="winner-status waiting" id="winner2Status">Menunggu</div>
+                            <div class="winner-actions" style="margin-top: 12px;">
+                                <a href="#" id="winner2Wa" class="btn-success btn-sm" target="_blank" style="display: inline-block; text-decoration: none; padding: 5px 10px; font-size: 11px;"><i class="fab fa-whatsapp"></i> Hubungi</a>
+                                <button class="btn-warning btn-sm" onclick="markClaimed(2)" id="claimBtn2">Tandai Diklaim</button>
+                            </div>
+                        </div>
+                        <div class="winner-card winner-3" id="winnerCard3">
+                            <div style="font-size: 48px;">🥉</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #CD7F32; margin: 10px 0;">JUARA 3</div>
+                            <div class="winner-name" id="winner3Name">Belum ada</div>
+                            <div class="winner-id" id="winner3Id">-</div>
+                            <div class="winner-prize" style="font-size: 18px; font-weight: bold; color: #CD7F32;">Rp10.000</div>
+                            <div class="winner-time" id="winner3Time" style="font-size: 10px; color: #aaa;">-</div>
+                            <div class="winner-status waiting" id="winner3Status">Menunggu</div>
+                            <div class="winner-actions" style="margin-top: 12px;">
+                                <a href="#" id="winner3Wa" class="btn-success btn-sm" target="_blank" style="display: inline-block; text-decoration: none; padding: 5px 10px; font-size: 11px;"><i class="fab fa-whatsapp"></i> Hubungi</a>
+                                <button class="btn-warning btn-sm" onclick="markClaimed(3)" id="claimBtn3">Tandai Diklaim</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 20px 0 10px;"><i class="fas fa-history"></i> Riwayat Pemenang</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%;">
+                            <thead>
+                                <tr><th>Rank</th><th>Nama</th><th>ID User</th><th>Waktu Menang</th><th>Status</th><th>Aksi</th></tr>
+                            </thead>
+                            <tbody id="winnersList"></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="admin-wa">
+                        <span><i class="fab fa-whatsapp"></i> Admin: 089699024654</span>
+                        <a href="https://wa.me/6289699024654" class="btn-success btn" target="_blank">Hubungi Admin</a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="blacklistTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-ban"></i> Blacklist</h2>
+                    <div class="input-group">
+                        <input type="text" id="blockUserId" placeholder="ID User" class="url-input">
+                        <input type="text" id="blockReason" placeholder="Alasan blokir" class="url-input">
+                        <button class="btn-danger" onclick="showBlockModal()">Blokir User</button>
+                    </div>
+                    <div id="blockedList"></div>
+                </div>
+            </div>
+
+            <div id="securityTab" class="tab-content">
+                <div class="card">
+                    <h2><i class="fas fa-shield-alt"></i> Keamanan & Log</h2>
+                    <div class="security-stats" id="securityStats"></div>
+                    <div id="suspiciousList"></div>
+                </div>
+            </div>
+
+            <div class="footer"><p>© 2026 WaterTik Admin Panel | 3 Pemenang (Rp50k, Rp20k, Rp10k)</p></div>
+        </div>
+    </div>
+
+    <!-- Modal Blokir -->
+    <div id="blockModal" class="modal-overlay">
+        <div class="modal-content">
+            <i class="fas fa-ban" style="font-size: 48px; color: #ff0050; margin-bottom: 15px;"></i>
+            <h3>Blokir User</h3>
+            <input type="text" id="blockModalUserId" placeholder="ID User" readonly style="background: rgba(255,0,80,0.2);">
+            <textarea id="blockModalReason" placeholder="Alasan blokir (wajib diisi)"></textarea>
+            <div class="modal-buttons">
+                <button class="btn-danger" onclick="confirmBlock()">Blokir</button>
+                <button class="btn" onclick="closeBlockModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQZ-ce5I9-5UvD19cPK6qKj8kIXaMhOek",
+            authDomain: "watertik-466a0.firebaseapp.com",
+            projectId: "watertik-466a0",
+            storageBucket: "watertik-466a0.firebasestorage.app",
+            messagingSenderId: "477111819819",
+            appId: "1:477111819819:web:09626fc68a93f6b372146e"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentAdmin = null;
+        let allUsers = [];
+        let pendingBlockUserId = null;
+
+        // ==================== LOGIN ====================
+        async function adminLogin() {
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            
+            if (!email || !password) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'Masukkan email dan password!';
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+                return;
+            }
+            
+            try {
+                const userCred = await auth.signInWithEmailAndPassword(email, password);
+                currentAdmin = userCred.user;
+                localStorage.setItem('watertik_admin', JSON.stringify({ uid: currentAdmin.uid, email: currentAdmin.email, loginTime: Date.now() }));
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                loadAllData();
+                showToast(`Welcome, ${currentAdmin.email}!`);
+            } catch(error) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'Login gagal: ' + error.message;
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+            }
+        }
+
+        async function adminLogout() {
+            await auth.signOut();
+            localStorage.removeItem('watertik_admin');
+            currentAdmin = null;
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            showToast('Logged out');
+        }
+
+        function checkAdminSession() {
+            const saved = localStorage.getItem('watertik_admin');
+            if (saved) {
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentAdmin = user;
+                        document.getElementById('loginContainer').style.display = 'none';
+                        document.getElementById('dashboard').style.display = 'block';
+                        loadAllData();
+                    }
+                });
+            }
+        }
+
+        function showToast(msg) {
+            let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // ==================== LOAD DATA ====================
+        async function loadAllData() {
+            if (!currentAdmin) return;
+            try {
+                const usersSnap = await db.collection('users').get();
+                allUsers = [];
+                usersSnap.forEach(doc => { let u = doc.data(); u.uid = doc.id; allUsers.push(u); });
+                updateStats();
+                renderUserTable();
+                renderPremiumTable();
+                loadWinners();
+                loadBlockedList();
+                detectMultipleAccounts();
+            } catch(error) {
+                console.error("Error loading data:", error);
+                showToast("Error loading data: " + error.message);
+            }
+        }
+
+        function updateStats() {
+            let premiumActive = allUsers.filter(u => u.isPremium && u.premiumExpiry && new Date(u.premiumExpiry) > new Date()).length;
+            let misiSelesai = allUsers.filter(u => u.missionCompleted).length;
+            let blocked = allUsers.filter(u => u.blocked).length;
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card"><div class="stat-number">${allUsers.length}</div><div class="stat-label">Total User</div></div>
+                <div class="stat-card"><div class="stat-number">${premiumActive}</div><div class="stat-label">Premium Aktif</div></div>
+                <div class="stat-card"><div class="stat-number">${misiSelesai}</div><div class="stat-label">Misi Selesai</div></div>
+                <div class="stat-card"><div class="stat-number">${blocked}</div><div class="stat-label">Diblokir</div></div>
+            `;
+        }
+
+        function filterUsers() { renderUserTable(); }
+
+        function renderUserTable() {
+            let searchTerm = document.getElementById('searchUserInput')?.value.toLowerCase() || '';
+            let filtered = allUsers.filter(u => (u.name && u.name.toLowerCase().includes(searchTerm)) || (u.userId && u.userId.toLowerCase().includes(searchTerm)));
+            let tbody = document.getElementById('userTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            filtered.forEach(user => {
+                let isPremiumActive = user.isPremium && user.premiumExpiry && new Date(user.premiumExpiry) > new Date();
+                let expiryText = user.premiumExpiry ? new Date(user.premiumExpiry).toLocaleDateString('id-ID') : '-';
+                let row = tbody.insertRow();
+                row.insertCell(0).innerHTML = user.name || '-';
+                row.insertCell(1).innerHTML = `<span class="id-highlight">${user.userId || '-'}</span>`;
+                row.insertCell(2).innerHTML = isPremiumActive ? '<span class="premium-badge">Premium</span>' : 'Free';
+                row.insertCell(3).innerHTML = isPremiumActive ? expiryText : '-';
+                row.insertCell(4).innerHTML = user.missionCompleted ? '✅ Selesai' : '❌ Belum';
+                row.insertCell(5).innerHTML = user.blocked ? '<span class="danger">Diblokir</span>' : '<span class="success">Aktif</span>';
+                row.insertCell(6).innerHTML = `
+                    <button class="btn btn-sm" onclick="extendPremium('${user.userId}')">➕ Perpanjang</button>
+                    ${!user.blocked ? `<button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>` : `<button class="btn-warning btn-sm" onclick="unblockUserById('${user.userId}')">Unblock</button>`}
+                `;
+            });
+        }
+
+        function renderPremiumTable() {
+            let tbody = document.getElementById('premiumTableBody');
+            if (!tbody) return;
+            let now = new Date();
+            let premiumUsers = allUsers.filter(u => u.isPremium);
+            tbody.innerHTML = '';
+            if (premiumUsers.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada user premium</td></tr>'; return; }
+            premiumUsers.forEach(u => {
+                let expiry = u.premiumExpiry ? new Date(u.premiumExpiry) : null;
+                let isActive = expiry && expiry > now;
+                let daysLeft = isActive ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : 0;
+                let row = tbody.insertRow();
+                row.insertCell(0).innerHTML = u.name || '-';
+                row.insertCell(1).innerHTML = `<span class="id-highlight">${u.userId || '-'}</span>`;
+                row.insertCell(2).innerHTML = isActive ? '<span class="success">✅ Aktif</span>' : '<span class="danger">❌ Expired</span>';
+                row.insertCell(3).innerHTML = expiry ? expiry.toLocaleDateString('id-ID') : '-';
+                row.insertCell(4).innerHTML = isActive ? daysLeft + ' hari' : '-';
+                row.insertCell(5).innerHTML = `<button class="btn-warning btn-sm" onclick="extendPremium('${u.userId}')">Perpanjang</button>`;
+            });
+        }
+
+        async function activatePremiumById() {
+            let userId = document.getElementById('premiumUserId').value.trim();
+            let months = parseInt(document.getElementById('premiumPackage').value);
+            if (!userId) { alert('Masukkan ID User!'); return; }
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) { alert('User tidak ditemukan!'); return; }
+                let doc = userDoc.docs[0];
+                let userData = doc.data();
+                let currentExpiry = userData.premiumExpiry ? new Date(userData.premiumExpiry) : new Date();
+                if (currentExpiry < new Date()) currentExpiry = new Date();
+                currentExpiry.setMonth(currentExpiry.getMonth() + months);
+                await doc.ref.update({ isPremium: true, premiumExpiry: currentExpiry.toISOString() });
+                showToast(`✅ Premium aktif untuk ${userData.name} (${months} bulan)`);
+                document.getElementById('premiumUserId').value = '';
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        }
+
+        window.extendPremium = async function(userId) {
+            let months = prompt('Masukkan jumlah bulan (1-12):', '1');
+            if (!months) return;
+            months = parseInt(months);
+            if (months < 1 || months > 12) { alert('Masukkan angka 1-12'); return; }
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) return;
+                let doc = userDoc.docs[0];
+                let userData = doc.data();
+                let currentExpiry = userData.premiumExpiry ? new Date(userData.premiumExpiry) : new Date();
+                if (currentExpiry < new Date()) currentExpiry = new Date();
+                currentExpiry.setMonth(currentExpiry.getMonth() + months);
+                await doc.ref.update({ premiumExpiry: currentExpiry.toISOString(), isPremium: true });
+                showToast(`✅ Premium diperpanjang ${months} bulan untuk ${userData.name}`);
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        };
+
+        // ==================== BLACKLIST ====================
+        function prepareBlock(userId, userName) {
+            pendingBlockUserId = userId;
+            document.getElementById('blockModalUserId').value = `${userName} (${userId})`;
+            document.getElementById('blockModalReason').value = '';
+            document.getElementById('blockModal').classList.add('active');
+        }
+
+        function showBlockModal() {
+            let userId = document.getElementById('blockUserId').value.trim();
+            let reason = document.getElementById('blockReason').value.trim();
+            if (!userId) { alert('Masukkan ID User!'); return; }
+            pendingBlockUserId = userId;
+            document.getElementById('blockModalUserId').value = userId;
+            document.getElementById('blockModalReason').value = reason;
+            document.getElementById('blockModal').classList.add('active');
+        }
+
+        async function confirmBlock() {
+            let userId = pendingBlockUserId;
+            let reason = document.getElementById('blockModalReason').value.trim();
+            if (!reason) { alert('Alasan blokir wajib diisi!'); return; }
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) { alert('User tidak ditemukan'); return; }
+                let doc = userDoc.docs[0];
+                await doc.ref.update({ blocked: true, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                await db.collection('blocked').doc(doc.id).set({ userId: userId, name: doc.data().name, reason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                showToast(`🚫 User ${doc.data().name} diblokir`);
+                closeBlockModal();
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        }
+
+        function closeBlockModal() {
+            document.getElementById('blockModal').classList.remove('active');
+            pendingBlockUserId = null;
+        }
+
+        window.unblockUserById = async function(userId) {
+            if (!confirm('Yakin ingin membuka blokir user ini?')) return;
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', userId).get();
+                if (userDoc.empty) return;
+                let doc = userDoc.docs[0];
+                await doc.ref.update({ blocked: false, blockedReason: null, blockedAt: null, blockedBy: null });
+                await db.collection('blocked').doc(doc.id).delete();
+                showToast(`✅ User ${doc.data().name} diunblock`);
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        };
+
+        async function loadBlockedList() {
+            try {
+                let blockedSnap = await db.collection('blocked').get();
+                let container = document.getElementById('blockedList');
+                if (!container) return;
+                if (blockedSnap.empty) { container.innerHTML = '<p>Tidak ada user diblokir</p>'; return; }
+                let html = '<h3>Daftar User Diblokir</h3>';
+                blockedSnap.forEach(doc => {
+                    let data = doc.data();
+                    html += `<div class="blocked-user"><div><strong>${data.name || '-'}</strong> (${data.userId})<br><span class="danger">Alasan: ${data.reason || '-'}</span><br><small>Oleh: ${data.blockedBy} | ${new Date(data.blockedAt).toLocaleString()}</small></div><button class="btn-warning btn-sm" onclick="unblockUserById('${data.userId}')">Unblock</button></div>`;
+                });
+                container.innerHTML = html;
+            } catch(error) { console.error(error); }
+        }
+
+        // ==================== WINNERS (FIXED) ====================
+        async function loadWinners() {
+            try {
+                const winnersDoc = await db.collection('global').doc('winners').get();
+                let winners = [];
+                if (winnersDoc.exists && winnersDoc.data().winners) {
+                    winners = winnersDoc.data().winners;
+                }
+                
+                // Update winner cards for rank 1,2,3
+                for (let rank = 1; rank <= 3; rank++) {
+                    const winner = winners.find(w => w.rank === rank);
+                    const nameEl = document.getElementById(`winner${rank}Name`);
+                    const idEl = document.getElementById(`winner${rank}Id`);
+                    const timeEl = document.getElementById(`winner${rank}Time`);
+                    const statusEl = document.getElementById(`winner${rank}Status`);
+                    const waLink = document.getElementById(`winner${rank}Wa`);
+                    const claimBtn = document.getElementById(`claimBtn${rank}`);
+                    
+                    if (winner) {
+                        if (nameEl) nameEl.innerHTML = winner.name || '-';
+                        if (idEl) idEl.innerHTML = winner.userId || '-';
+                        if (timeEl) timeEl.innerHTML = winner.time ? new Date(winner.time).toLocaleString() : '-';
+                        if (statusEl) {
+                            statusEl.innerHTML = winner.claimed ? '✅ Sudah Diklaim' : '⏳ Menunggu Klaim';
+                            statusEl.className = winner.claimed ? 'winner-status claimed' : 'winner-status waiting';
+                        }
+                        if (waLink) {
+                            waLink.href = `https://wa.me/6289699024654?text=Assalamualaikum%20${encodeURIComponent(winner.name)}%2C%20Selamat%20Anda%20menjadi%20pemenang%20juara%20${rank}%20Misi%20Ramadhan%20WaterTik.%20Silakan%20klaim%20hadiah%20Anda.%20Terima%20kasih.`;
+                        }
+                        if (claimBtn) {
+                            claimBtn.style.display = winner.claimed ? 'none' : 'inline-block';
+                        }
+                    } else {
+                        if (nameEl) nameEl.innerHTML = 'Belum ada';
+                        if (idEl) idEl.innerHTML = '-';
+                        if (timeEl) timeEl.innerHTML = '-';
+                        if (statusEl) {
+                            statusEl.innerHTML = 'Belum ada pemenang';
+                            statusEl.className = 'winner-status waiting';
+                        }
+                        if (claimBtn) claimBtn.style.display = 'none';
+                    }
+                }
+                
+                // Update winners list table
+                const winnersList = document.getElementById('winnersList');
+                if (!winnersList) return;
+                
+                if (winners.length === 0) {
+                    winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
+                } else {
+                    winnersList.innerHTML = winners.sort((a,b) => a.rank - b.rank).map(w => {
+                        const rankIcon = w.rank === 1 ? '🏆' : (w.rank === 2 ? '🥈' : '🥉');
+                        return `
+                            <tr>
+                                <td>${rankIcon} Pemenang ${w.rank}</td>
+                                <td><strong>${w.name}</strong></td>
+                                <td><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:6px;">${w.userId}</code></td>
+                                <td>${new Date(w.time).toLocaleString()}</td>
+                                <td>${w.claimed ? '<span class="success">✅ Diklaim</span>' : '<span class="warning">⏳ Menunggu</span>'}</td>
+                                <td>${!w.claimed ? `<button class="btn-warning btn-sm" onclick="markClaimed(${w.rank})">Tandai Diklaim</button>` : '-'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(error) {
+                console.error("Error loading winners:", error);
+                const winnersList = document.getElementById('winnersList');
+                if (winnersList) winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff0050">Error loading winners</td></tr>';
+            }
+        }
+
+        window.markClaimed = async function(rank) {
+            if (!confirm(`Yakin ingin menandai pemenang juara ${rank} sudah mengklaim hadiah?`)) return;
+            try {
+                const winnersDoc = await db.collection('global').doc('winners').get();
+                let winners = [];
+                if (winnersDoc.exists && winnersDoc.data().winners) {
+                    winners = winnersDoc.data().winners;
+                }
+                const winnerIndex = winners.findIndex(w => w.rank === rank);
+                if (winnerIndex !== -1) {
+                    winners[winnerIndex].claimed = true;
+                    winners[winnerIndex].claimedAt = new Date().toISOString();
+                    winners[winnerIndex].claimedBy = currentAdmin?.email || 'admin';
+                    await db.collection('global').doc('winners').set({ winners: winners, lastSync: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast(`✅ Pemenang juara ${rank} telah ditandai sudah klaim hadiah`);
+                    loadWinners();
+                }
+            } catch(error) {
+                showToast("Error: " + error.message);
+            }
+        };
+
+        // ==================== KEAMANAN & LOG (FIXED) ====================
+        async function detectMultipleAccounts() {
+            try {
+                const usersSnap = await db.collection('users').get();
+                let fpMap = new Map();
+                let totalUsers = 0;
+                
+                usersSnap.forEach(doc => {
+                    let user = doc.data();
+                    totalUsers++;
+                    let fingerprint = user.fingerprint || null;
+                    if (fingerprint && fingerprint !== '' && !user.blocked) {
+                        if (!fpMap.has(fingerprint)) fpMap.set(fingerprint, []);
+                        fpMap.get(fingerprint).push({ name: user.name, userId: user.userId || '-', docId: doc.id });
+                    }
+                });
+                
+                let suspicious = [];
+                for (let [fp, users] of fpMap.entries()) {
+                    if (users.length > 1) suspicious.push({ fingerprint: fp, users: users, count: users.length });
+                }
+                
+                const container = document.getElementById('suspiciousList');
+                const statsContainer = document.getElementById('securityStats');
+                
+                if (statsContainer) {
+                    statsContainer.innerHTML = `
+                        <div class="stat-card"><div class="stat-number">${totalUsers}</div><div class="stat-label">Total User</div></div>
+                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.length}</div><div class="stat-label">Multiple Groups</div></div>
+                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.reduce((a,b)=>a+b.count,0)}</div><div class="stat-label">Akun Terindikasi</div></div>
+                    `;
+                }
+                
+                if (!container) return;
+                if (suspicious.length === 0) {
+                    container.innerHTML = `<div style="background:rgba(76,175,80,0.1);border:1px solid #4CAF50;border-radius:12px;padding:15px;text-align:center"><i class="fas fa-shield-alt" style="color:#4CAF50;font-size:32px"></i><p><strong>✅ AMAN</strong><br>Tidak terdeteksi multiple account</p></div>`;
+                } else {
+                    container.innerHTML = `<div style="background:rgba(255,0,80,0.15);border:1px solid #ff0050;border-radius:12px;padding:15px;margin-bottom:15px"><i class="fas fa-exclamation-triangle" style="color:#ff0050"></i> <strong>⚠️ Ditemukan ${suspicious.length} kelompok multiple account</strong></div>${suspicious.map((s,idx)=>`<div class="suspicious-card"><div><strong>Kelompok ${idx+1}:</strong> <code>${s.fingerprint.substring(0,35)}...</code> <span class="danger">${s.count} akun</span></div><ul>${s.users.map(u=>`<li>${u.name} (${u.userId})</li>`).join('')}</ul><button class="btn-warning btn-sm" onclick="blockAllByFingerprint('${s.fingerprint}')">Blokir Semua</button></div>`).join('')}`;
+                }
+            } catch(error) {
+                document.getElementById('suspiciousList').innerHTML = `<div style="background:rgba(255,0,80,0.1);padding:15px;text-align:center">Error: ${error.message}<br><button class="btn btn-sm" onclick="detectMultipleAccounts()">Coba Lagi</button></div>`;
+            }
+        }
+
+        window.blockAllByFingerprint = async function(fingerprint) {
+            if (!confirm('⚠️ Blokir SEMUA akun dengan fingerprint ini?')) return;
+            try {
+                let userDocs = await db.collection('users').where('fingerprint', '==', fingerprint).get();
+                let reason = 'Multiple account (melanggar aturan)';
+                for (let doc of userDocs.docs) {
+                    await doc.ref.update({ blocked: true, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                }
+                showToast(`✅ ${userDocs.size} akun diblokir`);
+                loadAllData();
+            } catch(error) { showToast("Error: " + error.message); }
+        };
+
+        // ==================== MAINTENANCE (FIRESTORE) ====================
+        async function toggleMaintenance() {
+            const toggle = document.getElementById('maintenanceToggle');
+            const statusSpan = document.getElementById('maintenanceStatus');
+            const isActive = toggle.checked;
+            const message = document.getElementById('maintenanceMessage').value.trim() || (isActive ? 'Sedang maintenance. Kembali lagi nanti!' : '');
+            try {
+                await db.collection('settings').doc('maintenance').set({ isActive: isActive, message: message, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentAdmin?.email });
+                statusSpan.innerHTML = isActive ? 'Active (Maintenance)' : 'Offline (Normal)';
+                statusSpan.className = isActive ? 'maintenance-status active' : 'maintenance-status inactive';
+                showToast(isActive ? '🔧 Maintenance ON' : '✅ Maintenance OFF');
+            } catch(error) { showToast('Error: ' + error.message); toggle.checked = !isActive; }
+        }
+
+        async function loadMaintenanceStatus() {
+            try {
+                const doc = await db.collection('settings').doc('maintenance').get();
+                const toggle = document.getElementById('maintenanceToggle');
+                const statusSpan = document.getElementById('maintenanceStatus');
+                const msgInput = document.getElementById('maintenanceMessage');
+                if (doc.exists && doc.data().isActive) {
+                    if (toggle) toggle.checked = true;
+                    if (statusSpan) { statusSpan.innerHTML = 'Active (Maintenance)'; statusSpan.className = 'maintenance-status active'; }
+                    if (msgInput && doc.data().message) msgInput.value = doc.data().message;
+                } else {
+                    if (toggle) toggle.checked = false;
+                    if (statusSpan) { statusSpan.innerHTML = 'Offline (Normal)'; statusSpan.className = 'maintenance-status inactive'; }
+                }
+            } catch(error) { console.error(error); }
+        }
+
+        async function updateMaintenanceMessage() {
+            const message = document.getElementById('maintenanceMessage').value.trim();
+            try {
+                await db.collection('settings').doc('maintenance').set({ message: message }, { merge: true });
+                showToast('✅ Pesan maintenance disimpan');
+            } catch(error) { showToast('Error: ' + error.message); }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loginButton')?.addEventListener('click', adminLogin);
+            document.getElementById('logoutButton')?.addEventListener('click', adminLogout);
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', function() { switchTab(this.getAttribute('data-tab')); }));
+            checkAdminSession();
+            loadMaintenanceStatus();
+        });
+
+        setInterval(() => { if (currentAdmin) loadAllData(); }, 30000);
+        
+        window.prepareBlock = prepareBlock; window.confirmBlock = confirmBlock; window.closeBlockModal = closeBlockModal;
+        window.toggleMaintenance = toggleMaintenance; window.updateMaintenanceMessage = updateMaintenanceMessage;
+        window.blockAllByFingerprint = blockAllByFingerprint; window.markClaimed = markClaimed;
+    </script>
+</body>
+</html>            font-size: 16px;
         }
         .login-container input:focus { border-color: #00f2fe; outline: none; }
         .login-btn {
@@ -647,4 +2039,4 @@
         setInterval(() => { if (currentAdmin) loadAllData(); }, 30000);
     </script>
 </body>
-</html>
+  </html>                                                                
