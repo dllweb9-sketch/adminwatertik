@@ -139,7 +139,9 @@
                     <input type="text" id="searchUserInput" class="search-box" placeholder="🔍 Cari nama atau ID..." onkeyup="filterUsers()">
                     <div style="overflow-x: auto;">
                         <table id="userTable">
-                            <thead><tr><th>Nama</th><th>ID User</th><th>Premium</th><th>EXP</th><th>Misi</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <thead>
+                                <tr><th>Nama</th><th>ID User</th><th>Premium</th><th>EXP</th><th>Misi</th><th>Status</th><th>Aksi</th></tr>
+                            </thead>
                             <tbody id="userTableBody"></tbody>
                         </table>
                     </div>
@@ -162,7 +164,9 @@
                     <h3>User Premium</h3>
                     <div style="overflow-x:auto;">
                         <table id="premiumTable">
-                            <thead><tr><th>Nama</th><th>ID User</th><th>Status</th><th>EXP Sampai</th><th>Sisa Hari</th><th>Aksi</th></tr></thead>
+                            <thead>
+                                <tr><th>Nama</th><th>ID User</th><th>Status</th><th>EXP Sampai</th><th>Sisa Hari</th><th>Aksi</th></tr>
+                            </thead>
                             <tbody id="premiumTableBody"></tbody>
                         </table>
                     </div>
@@ -172,9 +176,7 @@
             <div id="winnersTab" class="tab-content">
                 <div class="card">
                     <h2><i class="fas fa-trophy"></i> Pemenang Misi Ramadhan</h2>
-                    <p style="margin-bottom: 15px; color: #aaa; font-size: 12px;">
-                        <i class="fas fa-info-circle"></i> Pemenang otomatis muncul ketika user klaim hadiah di aplikasi WaterTik
-                    </p>
+                    <p style="margin-bottom: 15px; color: #aaa; font-size: 12px;"><i class="fas fa-info-circle"></i> Pemenang otomatis muncul ketika user klaim hadiah di aplikasi WaterTik</p>
                     
                     <div class="winners-grid">
                         <div class="winner-card winner-1" id="winnerCard1">
@@ -221,7 +223,9 @@
                     <h3 style="margin: 20px 0 10px;"><i class="fas fa-history"></i> Riwayat Pemenang</h3>
                     <div style="overflow-x: auto;">
                         <table style="width: 100%;">
-                            <thead><tr><th>Rank</th><th>Nama</th><th>ID User</th><th>Waktu Menang</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <thead>
+                                <tr><th>Rank</th><th>Nama</th><th>ID User</th><th>Waktu Menang</th><th>Status</th><th>Aksi</th></tr>
+                            </thead>
                             <tbody id="winnersList"></tbody>
                         </table>
                     </div>
@@ -406,6 +410,7 @@
                 row.insertCell(3).innerHTML = isPremiumActive ? expiryText : '-';
                 row.insertCell(4).innerHTML = user.missionCompleted ? '✅ Selesai' : '❌ Belum';
                 row.insertCell(5).innerHTML = user.blocked ? '<span class="danger">Diblokir</span>' : '<span class="success">Aktif</span>';
+                // SEMUA AKUN memiliki tombol hapus (aktif maupun diblokir)
                 row.insertCell(6).innerHTML = `
                     <button class="btn btn-sm" onclick="extendPremium('${user.userId}')">➕ Perpanjang</button>
                     <button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>
@@ -539,7 +544,7 @@
             } catch(error) { console.error(error); }
         }
 
-        // ==================== HAPUS AKUN (DELETE USER) ====================
+        // ==================== HAPUS AKUN (DELETE USER) - UNTUK SEMUA AKUN ====================
         function prepareDelete(userId, userName) {
             pendingDeleteUser = { userId: userId, name: userName };
             document.getElementById('deleteUserName').innerHTML = `Hapus akun <strong>${userName}</strong> (${userId})?`;
@@ -564,10 +569,14 @@
                 let doc = userDoc.docs[0];
                 let userFingerprint = doc.id;
                 
+                // Hapus dari collection users
                 await db.collection('users').doc(userFingerprint).delete();
+                // Hapus dari collection missions
                 await db.collection('missions').doc(userFingerprint).delete();
+                // Hapus dari collection blocked jika ada
                 await db.collection('blocked').doc(userFingerprint).delete();
                 
+                // Catat log penghapusan
                 await db.collection('deleted_logs').add({
                     userId: pendingDeleteUser.userId,
                     name: pendingDeleteUser.name,
@@ -627,7 +636,7 @@
                 const winnersList = document.getElementById('winnersList');
                 if (!winnersList) return;
                 if (winners.length === 0) {
-                    winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
+                    winnersList.innerHTML = '<td><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
                 } else {
                     winnersList.innerHTML = winners.sort((a,b) => a.rank - b.rank).map(w => {
                         const rankIcon = w.rank === 1 ? '🏆' : (w.rank === 2 ? '🥈' : '🥉');
