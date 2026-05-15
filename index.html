@@ -43,6 +43,7 @@
         .btn-warning { background: linear-gradient(135deg, #ff9800, #f44336); }
         .btn-success { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
         .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 8px; cursor: pointer; border: none; }
+        .btn-delete { background: linear-gradient(135deg, #ff0050, #8B0000); }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
         .tab-btn { padding: 12px 24px; background: rgba(255,255,255,0.08); border: none; border-radius: 12px; color: white; cursor: pointer; font-size: 14px; transition: all 0.3s; }
         .tab-btn:hover { background: rgba(0,242,254,0.2); }
@@ -269,6 +270,21 @@
         </div>
     </div>
 
+    <!-- MODAL HAPUS AKUN -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-content">
+            <i class="fas fa-trash-alt" style="font-size: 48px; color: #ff0050; margin-bottom: 15px;"></i>
+            <h3 style="color: #ff0050;">⚠️ HAPUS AKUN ⚠️</h3>
+            <p id="deleteUserName" style="margin: 15px 0;"></p>
+            <p style="color: #ff9800; font-size: 12px;">Tindakan ini tidak dapat dibatalkan! Semua data user akan dihapus permanen.</p>
+            <textarea id="deleteConfirmReason" placeholder="Alasan penghapusan (wajib diisi)" style="width: 100%; padding: 10px; margin: 10px 0; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 10px; color: white;"></textarea>
+            <div class="modal-buttons">
+                <button class="btn-delete btn-sm" onclick="confirmDeleteUser()" style="background: #ff0050; padding: 10px 20px;">✅ Ya, Hapus Permanen</button>
+                <button class="btn btn-sm" onclick="closeDeleteModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCQZ-ce5I9-5UvD19cPK6qKj8kIXaMhOek",
@@ -286,6 +302,7 @@
         let currentAdmin = null;
         let allUsers = [];
         let pendingBlockUserId = null;
+        let pendingDeleteUser = null;
 
         function showToast(msg) {
             let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
@@ -391,7 +408,8 @@
                 row.insertCell(5).innerHTML = user.blocked ? '<span class="danger">Diblokir</span>' : '<span class="success">Aktif</span>';
                 row.insertCell(6).innerHTML = `
                     <button class="btn btn-sm" onclick="extendPremium('${user.userId}')">➕ Perpanjang</button>
-                    ${!user.blocked ? `<button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>` : `<button class="btn-warning btn-sm" onclick="unblockUserById('${user.userId}')">Unblock</button>`}
+                    <button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>
+                    <button class="btn-delete btn-sm" onclick="prepareDelete('${user.userId}', '${user.name}')" style="background: #ff0050;">🗑️ Hapus Akun</button>
                 `;
             });
         }
@@ -402,7 +420,7 @@
             let now = new Date();
             let premiumUsers = allUsers.filter(u => u.isPremium);
             tbody.innerHTML = '';
-            if (premiumUsers.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada user premium</td></tr>'; return; }
+            if (premiumUsers.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada user premium<\/td><\/tr>'; return; }
             premiumUsers.forEach(u => {
                 let expiry = u.premiumExpiry ? new Date(u.premiumExpiry) : null;
                 let isActive = expiry && expiry > now;
@@ -521,17 +539,61 @@
             } catch(error) { console.error(error); }
         }
 
-        // ==================== WINNERS - OTOMATIS DARI WATERIK ====================
+        // ==================== HAPUS AKUN (DELETE USER) ====================
+        function prepareDelete(userId, userName) {
+            pendingDeleteUser = { userId: userId, name: userName };
+            document.getElementById('deleteUserName').innerHTML = `Hapus akun <strong>${userName}</strong> (${userId})?`;
+            document.getElementById('deleteConfirmReason').value = '';
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            pendingDeleteUser = null;
+        }
+
+        async function confirmDeleteUser() {
+            if (!pendingDeleteUser) return;
+            let reason = document.getElementById('deleteConfirmReason').value.trim();
+            if (!reason) { alert('Alasan penghapusan wajib diisi!'); return; }
+            if (!confirm(`⚠️ PERINGATAN! Akun ${pendingDeleteUser.name} akan DIHAPUS PERMANEN!\n\nTindakan ini tidak dapat dibatalkan.\n\nYakin ingin menghapus?`)) return;
+            
+            try {
+                let userDoc = await db.collection('users').where('userId', '==', pendingDeleteUser.userId).get();
+                if (userDoc.empty) { alert('User tidak ditemukan'); closeDeleteModal(); return; }
+                let doc = userDoc.docs[0];
+                let userFingerprint = doc.id;
+                
+                await db.collection('users').doc(userFingerprint).delete();
+                await db.collection('missions').doc(userFingerprint).delete();
+                await db.collection('blocked').doc(userFingerprint).delete();
+                
+                await db.collection('deleted_logs').add({
+                    userId: pendingDeleteUser.userId,
+                    name: pendingDeleteUser.name,
+                    fingerprint: userFingerprint,
+                    reason: reason,
+                    deletedBy: currentAdmin?.email || 'admin',
+                    deletedAt: new Date().toISOString()
+                });
+                
+                showToast(`✅ Akun ${pendingDeleteUser.name} berhasil dihapus permanen`);
+                closeDeleteModal();
+                loadAllData();
+            } catch(error) {
+                console.error("Error deleting user:", error);
+                showToast("Error: " + error.message);
+            }
+        }
+
+        // ==================== WINNERS ====================
         async function loadWinners() {
             try {
                 const winnersDoc = await db.collection('global').doc('winners').get();
                 let winners = [];
-                
                 if (winnersDoc.exists && winnersDoc.data().winners) {
                     winners = winnersDoc.data().winners;
                 }
-                
-                // Update winner cards rank 1,2,3
                 for (let rank = 1; rank <= 3; rank++) {
                     const winner = winners.find(w => w.rank === rank);
                     const nameEl = document.getElementById(`winner${rank}Name`);
@@ -549,9 +611,7 @@
                             statusEl.innerHTML = winner.claimed ? '✅ Sudah Diklaim' : '⏳ Menunggu Klaim';
                             statusEl.className = winner.claimed ? 'winner-status claimed' : 'winner-status waiting';
                         }
-                        if (waLink) {
-                            waLink.href = `https://wa.me/6289699024654?text=Assalamualaikum%20${encodeURIComponent(winner.name)}%2C%20Selamat%20Anda%20menjadi%20pemenang%20juara%20${rank}%20Misi%20Ramadhan%20WaterTik.%20Silakan%20klaim%20hadiah%20Anda.`;
-                        }
+                        if (waLink) waLink.href = `https://wa.me/6289699024654?text=Assalamualaikum%20${encodeURIComponent(winner.name)}%2C%20Selamat%20Anda%20menjadi%20pemenang%20juara%20${rank}%20Misi%20Ramadhan%20WaterTik.%20Silakan%20klaim%20hadiah%20Anda.`;
                         if (claimBtn) claimBtn.style.display = winner.claimed ? 'none' : 'inline-block';
                     } else {
                         if (nameEl) nameEl.innerHTML = 'Belum ada';
@@ -564,31 +624,17 @@
                         if (claimBtn) claimBtn.style.display = 'none';
                     }
                 }
-                
-                // Update winners list table
                 const winnersList = document.getElementById('winnersList');
                 if (!winnersList) return;
-                
                 if (winners.length === 0) {
                     winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
                 } else {
                     winnersList.innerHTML = winners.sort((a,b) => a.rank - b.rank).map(w => {
                         const rankIcon = w.rank === 1 ? '🏆' : (w.rank === 2 ? '🥈' : '🥉');
-                        return `
-                            <tr>
-                                <td>${rankIcon} Pemenang ${w.rank}</td>
-                                <td><strong>${w.name}</strong></td>
-                                <td><code>${w.userId}</code></td>
-                                <td>${new Date(w.time).toLocaleString('id-ID')}</td>
-                                <td>${w.claimed ? '<span class="success">✅ Diklaim</span>' : '<span class="warning">⏳ Menunggu</span>'}</td>
-                                <td>${!w.claimed ? `<button class="btn-warning btn-sm" onclick="markClaimed(${w.rank})">Tandai Diklaim</button>` : '-'}</td>
-                            </tr>
-                        `;
+                        return `<tr><td>${rankIcon} Pemenang ${w.rank}</td><td><strong>${w.name}</strong></td><td><code>${w.userId}</code></td><td>${new Date(w.time).toLocaleString('id-ID')}</td><td>${w.claimed ? '<span class="success">✅ Diklaim</span>' : '<span class="warning">⏳ Menunggu</span>'}</td><td>${!w.claimed ? `<button class="btn-warning btn-sm" onclick="markClaimed(${w.rank})">Tandai Diklaim</button>` : '-'}</td></tr>`;
                     }).join('');
                 }
-            } catch(error) {
-                console.error("Error loading winners:", error);
-            }
+            } catch(error) { console.error("Error loading winners:", error); }
         }
 
         window.markClaimed = async function(rank) {
@@ -608,9 +654,7 @@
                     showToast(`✅ Pemenang juara ${rank} telah ditandai sudah klaim hadiah`);
                     loadWinners();
                 }
-            } catch(error) {
-                showToast("Error: " + error.message);
-            }
+            } catch(error) { showToast("Error: " + error.message); }
         };
 
         async function detectMultipleAccounts() {
@@ -634,11 +678,9 @@
                 const container = document.getElementById('suspiciousList');
                 const statsContainer = document.getElementById('securityStats');
                 if (statsContainer) {
-                    statsContainer.innerHTML = `
-                        <div class="stat-card"><div class="stat-number">${totalUsers}</div><div class="stat-label">Total User</div></div>
+                    statsContainer.innerHTML = `<div class="stat-card"><div class="stat-number">${totalUsers}</div><div class="stat-label">Total User</div></div>
                         <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.length}</div><div class="stat-label">Multiple Groups</div></div>
-                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.reduce((a,b)=>a+b.count,0)}</div><div class="stat-label">Akun Terindikasi</div></div>
-                    `;
+                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.reduce((a,b)=>a+b.count,0)}</div><div class="stat-label">Akun Terindikasi</div></div>`;
                 }
                 if (!container) return;
                 if (suspicious.length === 0) {
@@ -731,6 +773,9 @@
         window.unblockUserById = unblockUserById;
         window.filterUsers = filterUsers;
         window.activatePremiumById = activatePremiumById;
+        window.prepareDelete = prepareDelete;
+        window.confirmDeleteUser = confirmDeleteUser;
+        window.closeDeleteModal = closeDeleteModal;
     </script>
 </body>
 </html>
