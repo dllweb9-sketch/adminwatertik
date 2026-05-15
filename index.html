@@ -420,7 +420,7 @@
             let now = new Date();
             let premiumUsers = allUsers.filter(u => u.isPremium);
             tbody.innerHTML = '';
-            if (premiumUsers.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada user premium<\/td><\/tr>'; return; }
+            if (premiumUsers.length === 0) { tbody.innerHTML = '<td><td colspan="6" style="text-align:center">Belum ada user premium</td></tr>'; return; }
             premiumUsers.forEach(u => {
                 let expiry = u.premiumExpiry ? new Date(u.premiumExpiry) : null;
                 let isActive = expiry && expiry > now;
@@ -631,7 +631,16 @@
                 } else {
                     winnersList.innerHTML = winners.sort((a,b) => a.rank - b.rank).map(w => {
                         const rankIcon = w.rank === 1 ? '🏆' : (w.rank === 2 ? '🥈' : '🥉');
-                        return `<tr><td>${rankIcon} Pemenang ${w.rank}</td><td><strong>${w.name}</strong></td><td><code>${w.userId}</code></td><td>${new Date(w.time).toLocaleString('id-ID')}</td><td>${w.claimed ? '<span class="success">✅ Diklaim</span>' : '<span class="warning">⏳ Menunggu</span>'}</td><td>${!w.claimed ? `<button class="btn-warning btn-sm" onclick="markClaimed(${w.rank})">Tandai Diklaim</button>` : '-'}</td></tr>`;
+                        return `
+                            <tr>
+                                <td>${rankIcon} Pemenang ${w.rank}</td>
+                                <td><strong>${w.name}</strong></td>
+                                <td><code>${w.userId}</code></td>
+                                <td>${new Date(w.time).toLocaleString('id-ID')}</td>
+                                <td>${w.claimed ? '<span class="success">✅ Diklaim</span>' : '<span class="warning">⏳ Menunggu</span>'}</td>
+                                <td>${!w.claimed ? `<button class="btn-warning btn-sm" onclick="markClaimed(${w.rank})">Tandai Diklaim</button>` : '-'}</td>
+                            </tr>
+                        `;
                     }).join('');
                 }
             } catch(error) { console.error("Error loading winners:", error); }
@@ -678,9 +687,11 @@
                 const container = document.getElementById('suspiciousList');
                 const statsContainer = document.getElementById('securityStats');
                 if (statsContainer) {
-                    statsContainer.innerHTML = `<div class="stat-card"><div class="stat-number">${totalUsers}</div><div class="stat-label">Total User</div></div>
+                    statsContainer.innerHTML = `
+                        <div class="stat-card"><div class="stat-number">${totalUsers}</div><div class="stat-label">Total User</div></div>
                         <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.length}</div><div class="stat-label">Multiple Groups</div></div>
-                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.reduce((a,b)=>a+b.count,0)}</div><div class="stat-label">Akun Terindikasi</div></div>`;
+                        <div class="stat-card"><div class="stat-number" style="color:${suspicious.length>0?'#ff0050':'#4CAF50'}">${suspicious.reduce((a,b)=>a+b.count,0)}</div><div class="stat-label">Akun Terindikasi</div></div>
+                    `;
                 }
                 if (!container) return;
                 if (suspicious.length === 0) {
