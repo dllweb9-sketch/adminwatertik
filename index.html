@@ -37,6 +37,7 @@
         .danger { color: #ff0050; }
         .success { color: #4CAF50; }
         .warning { color: #ff9800; }
+        .info { color: #00f2fe; }
         .btn { padding: 8px 16px; background: linear-gradient(135deg, #00f2fe, #2196F3); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 12px; transition: all 0.3s; }
         .btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
         .btn-danger { background: linear-gradient(135deg, #ff0050, #ff0080); }
@@ -61,7 +62,7 @@
         .winner-status.claimed { color: #4CAF50; font-weight: bold; }
         .winner-status.waiting { color: #ff9800; font-weight: bold; }
         .winner-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-        .blocked-user { background: rgba(255,0,80,0.15); border: 1px solid #ff0050; border-radius: 12px; padding: 12px 15px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .status-card { background: rgba(255,0,80,0.1); border: 1px solid #ff0050; border-radius: 12px; padding: 12px 15px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .url-input { padding: 10px 15px; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 10px; color: white; outline: none; width: 100%; }
         .id-highlight { font-family: monospace; background: rgba(0,242,254,0.2); padding: 2px 6px; border-radius: 6px; font-size: 11px; }
         .search-box { padding: 10px 15px; background: rgba(0,0,0,0.4); border: 1px solid #00f2fe; border-radius: 10px; color: white; width: 250px; margin-bottom: 15px; }
@@ -129,7 +130,7 @@
                 <button class="tab-btn active" data-tab="users">📋 Data User</button>
                 <button class="tab-btn" data-tab="premium">💎 Premium</button>
                 <button class="tab-btn" data-tab="winners">🏆 Pemenang</button>
-                <button class="tab-btn" data-tab="blacklist">🚫 Blacklist</button>
+                <button class="tab-btn" data-tab="status">📊 Status Akun</button>
                 <button class="tab-btn" data-tab="security">🔒 Keamanan</button>
             </div>
 
@@ -237,15 +238,20 @@
                 </div>
             </div>
 
-            <div id="blacklistTab" class="tab-content">
+            <div id="statusTab" class="tab-content">
                 <div class="card">
-                    <h2><i class="fas fa-ban"></i> Blacklist</h2>
+                    <h2><i class="fas fa-flag-checkered"></i> Manajemen Status Akun</h2>
+                    <p style="margin-bottom: 15px; color: #aaa;">Nonaktifkan = user tidak bisa login/akses, tapi data tetap ada. Blokir = hard block permanent.</p>
                     <div class="input-group">
-                        <input type="text" id="blockUserId" placeholder="ID User" class="url-input">
-                        <input type="text" id="blockReason" placeholder="Alasan blokir" class="url-input">
-                        <button class="btn-danger" onclick="showBlockModal()">Blokir User</button>
+                        <input type="text" id="statusUserId" placeholder="ID User" class="url-input">
+                        <select id="statusAction" class="url-input" style="width: 150px;">
+                            <option value="disable">🔘 Nonaktifkan</option>
+                            <option value="enable">▶️ Aktifkan</option>
+                            <option value="block">🔨 Blokir</option>
+                        </select>
+                        <button class="btn-warning" onclick="changeUserStatus()">Ubah Status</button>
                     </div>
-                    <div id="blockedList"></div>
+                    <div id="statusList"></div>
                 </div>
             </div>
 
@@ -261,20 +267,19 @@
         </div>
     </div>
 
-    <div id="blockModal" class="modal-overlay">
+    <div id="statusModal" class="modal-overlay">
         <div class="modal-content">
-            <i class="fas fa-ban" style="font-size: 48px; color: #ff0050; margin-bottom: 15px;"></i>
-            <h3>Blokir User</h3>
-            <input type="text" id="blockModalUserId" placeholder="ID User" readonly style="background: rgba(255,0,80,0.2);">
-            <textarea id="blockModalReason" placeholder="Alasan blokir (wajib diisi)"></textarea>
+            <i class="fas fa-info-circle" style="font-size: 48px; color: #ff9800; margin-bottom: 15px;"></i>
+            <h3 id="statusModalTitle">Ubah Status Akun</h3>
+            <p id="statusModalMessage" style="margin: 15px 0;"></p>
+            <textarea id="statusModalReason" placeholder="Alasan (opsional)" style="width: 100%; padding: 10px; margin: 10px 0; background: rgba(0,0,0,0.4); border: 1px solid #333; border-radius: 10px; color: white;"></textarea>
             <div class="modal-buttons">
-                <button class="btn-danger" onclick="confirmBlock()">Blokir</button>
-                <button class="btn" onclick="closeBlockModal()">Batal</button>
+                <button class="btn-warning btn-sm" onclick="confirmStatusChange()">Ya, Ubah Status</button>
+                <button class="btn btn-sm" onclick="closeStatusModal()">Batal</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL HAPUS AKUN -->
     <div id="deleteModal" class="modal-overlay">
         <div class="modal-content">
             <i class="fas fa-trash-alt" style="font-size: 48px; color: #ff0050; margin-bottom: 15px;"></i>
@@ -305,7 +310,7 @@
 
         let currentAdmin = null;
         let allUsers = [];
-        let pendingBlockUserId = null;
+        let pendingAction = null;
         let pendingDeleteUser = null;
 
         function showToast(msg) {
@@ -372,7 +377,7 @@
                 renderUserTable();
                 renderPremiumTable();
                 loadWinners();
-                loadBlockedList();
+                loadStatusList();
                 detectMultipleAccounts();
             } catch(error) {
                 console.error("Error loading data:", error);
@@ -383,16 +388,23 @@
         function updateStats() {
             let premiumActive = allUsers.filter(u => u.isPremium && u.premiumExpiry && new Date(u.premiumExpiry) > new Date()).length;
             let misiSelesai = allUsers.filter(u => u.missionCompleted).length;
-            let blocked = allUsers.filter(u => u.blocked).length;
+            let blocked = allUsers.filter(u => u.blocked === true).length;
+            let disabled = allUsers.filter(u => u.disabled === true).length;
             document.getElementById('statsGrid').innerHTML = `
                 <div class="stat-card"><div class="stat-number">${allUsers.length}</div><div class="stat-label">Total User</div></div>
                 <div class="stat-card"><div class="stat-number">${premiumActive}</div><div class="stat-label">Premium Aktif</div></div>
                 <div class="stat-card"><div class="stat-number">${misiSelesai}</div><div class="stat-label">Misi Selesai</div></div>
-                <div class="stat-card"><div class="stat-number">${blocked}</div><div class="stat-label">Diblokir</div></div>
+                <div class="stat-card"><div class="stat-number">${blocked + disabled}</div><div class="stat-label">Nonaktif/Blokir</div></div>
             `;
         }
 
         function filterUsers() { renderUserTable(); }
+
+        function getStatusText(user) {
+            if (user.blocked === true) return '<span class="danger">🔴 Diblokir</span>';
+            if (user.disabled === true) return '<span class="warning">🟡 Nonaktif</span>';
+            return '<span class="success">🟢 Aktif</span>';
+        }
 
         function renderUserTable() {
             let searchTerm = document.getElementById('searchUserInput')?.value.toLowerCase() || '';
@@ -409,10 +421,13 @@
                 row.insertCell(2).innerHTML = isPremiumActive ? '<span class="premium-badge">Premium</span>' : 'Free';
                 row.insertCell(3).innerHTML = isPremiumActive ? expiryText : '-';
                 row.insertCell(4).innerHTML = user.missionCompleted ? '✅ Selesai' : '❌ Belum';
-                row.insertCell(5).innerHTML = user.blocked ? '<span class="danger">Diblokir</span>' : '<span class="success">Aktif</span>';
+                row.insertCell(5).innerHTML = getStatusText(user);
                 row.insertCell(6).innerHTML = `
                     <button class="btn btn-sm" onclick="extendPremium('${user.userId}')">➕ Perpanjang</button>
-                    <button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>
+                    ${!user.blocked ? `<button class="btn-warning btn-sm" onclick="showStatusModal('disable', '${user.userId}', '${user.name}', '${user.uid}')">🔘 Nonaktif</button>` : ''}
+                    ${user.disabled === true ? `<button class="btn-success btn-sm" onclick="showStatusModal('enable', '${user.userId}', '${user.name}', '${user.uid}')">▶️ Aktifkan</button>` : ''}
+                    ${!user.blocked && !user.disabled ? `<button class="btn-danger btn-sm" onclick="showStatusModal('block', '${user.userId}', '${user.name}', '${user.uid}')">🔨 Blokir</button>` : ''}
+                    ${user.blocked === true ? `<button class="btn-success btn-sm" onclick="showStatusModal('enable', '${user.userId}', '${user.name}', '${user.uid}')">🔓 Unblock</button>` : ''}
                     <button class="btn-delete btn-sm" onclick="prepareDelete('${user.userId}', '${user.name}', '${user.uid}')" style="background: #ff0050;">🗑️ Hapus Akun</button>
                 `;
             });
@@ -424,7 +439,7 @@
             let now = new Date();
             let premiumUsers = allUsers.filter(u => u.isPremium);
             tbody.innerHTML = '';
-            if (premiumUsers.length === 0) { tbody.innerHTML = '<td><td colspan="6" style="text-align:center">Belum ada user premium</td></tr>'; return; }
+            if (premiumUsers.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada user premium</td></tr>'; return; }
             premiumUsers.forEach(u => {
                 let expiry = u.premiumExpiry ? new Date(u.premiumExpiry) : null;
                 let isActive = expiry && expiry > now;
@@ -477,73 +492,108 @@
             } catch(error) { showToast("Error: " + error.message); }
         };
 
-        function prepareBlock(userId, userName) {
-            pendingBlockUserId = userId;
-            document.getElementById('blockModalUserId').value = `${userName} (${userId})`;
-            document.getElementById('blockModalReason').value = '';
-            document.getElementById('blockModal').classList.add('active');
+        // ==================== STATUS AKUN ====================
+        let pendingStatus = null;
+
+        function showStatusModal(action, userId, userName, docId) {
+            pendingStatus = { action, userId, userName, docId };
+            const modal = document.getElementById('statusModal');
+            const title = document.getElementById('statusModalTitle');
+            const message = document.getElementById('statusModalMessage');
+            
+            if (action === 'disable') {
+                title.innerHTML = '🔘 Nonaktifkan Akun';
+                message.innerHTML = `Nonaktifkan akun <strong>${userName}</strong> (${userId || 'tanpa ID'})?<br>User tidak bisa login/akses, tapi data tetap disimpan.`;
+            } else if (action === 'enable') {
+                title.innerHTML = '▶️ Aktifkan Akun';
+                message.innerHTML = `Aktifkan akun <strong>${userName}</strong> (${userId || 'tanpa ID'})?<br>User bisa login dan mengakses kembali.`;
+            } else if (action === 'block') {
+                title.innerHTML = '🔨 Blokir Akun (Hard)';
+                message.innerHTML = `Blokir permanen akun <strong>${userName}</strong> (${userId || 'tanpa ID'})?<br>User tidak bisa login dan tidak bisa diaktifkan kembali (kecuali unblock manual).`;
+            }
+            document.getElementById('statusModalReason').value = '';
+            modal.classList.add('active');
         }
 
-        function showBlockModal() {
-            let userId = document.getElementById('blockUserId').value.trim();
-            let reason = document.getElementById('blockReason').value.trim();
+        function closeStatusModal() {
+            document.getElementById('statusModal').classList.remove('active');
+            pendingStatus = null;
+        }
+
+        async function confirmStatusChange() {
+            if (!pendingStatus) return;
+            let reason = document.getElementById('statusModalReason').value.trim();
+            let updateData = {};
+            
+            if (pendingStatus.action === 'disable') {
+                updateData = { disabled: true, blocked: false, disabledReason: reason || 'Tidak ada alasan', disabledAt: new Date().toISOString(), disabledBy: currentAdmin?.email };
+            } else if (pendingStatus.action === 'enable') {
+                updateData = { disabled: false, blocked: false, disabledReason: null, disabledAt: null, blockedReason: null, blockedAt: null };
+            } else if (pendingStatus.action === 'block') {
+                updateData = { blocked: true, disabled: false, blockedReason: reason || 'Tidak ada alasan', blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email };
+            }
+            
+            try {
+                let docRef;
+                if (pendingStatus.docId && pendingStatus.docId !== 'undefined') {
+                    docRef = db.collection('users').doc(pendingStatus.docId);
+                } else if (pendingStatus.userId && pendingStatus.userId !== '-' && pendingStatus.userId !== 'null') {
+                    let userDoc = await db.collection('users').where('userId', '==', pendingStatus.userId).get();
+                    if (userDoc.empty) { alert('User tidak ditemukan'); closeStatusModal(); return; }
+                    docRef = userDoc.docs[0].ref;
+                } else {
+                    alert('User tidak valid');
+                    closeStatusModal();
+                    return;
+                }
+                
+                await docRef.update(updateData);
+                
+                if (pendingStatus.action === 'disable') showToast(`✅ Akun ${pendingStatus.userName} dinonaktifkan`);
+                else if (pendingStatus.action === 'enable') showToast(`✅ Akun ${pendingStatus.userName} diaktifkan`);
+                else if (pendingStatus.action === 'block') showToast(`🚫 Akun ${pendingStatus.userName} diblokir`);
+                
+                closeStatusModal();
+                loadAllData();
+            } catch(error) {
+                showToast("Error: " + error.message);
+            }
+        }
+
+        async function changeUserStatus() {
+            let userId = document.getElementById('statusUserId').value.trim();
+            let action = document.getElementById('statusAction').value;
             if (!userId) { alert('Masukkan ID User!'); return; }
-            pendingBlockUserId = userId;
-            document.getElementById('blockModalUserId').value = userId;
-            document.getElementById('blockModalReason').value = reason;
-            document.getElementById('blockModal').classList.add('active');
-        }
-
-        async function confirmBlock() {
-            let userId = pendingBlockUserId;
-            let reason = document.getElementById('blockModalReason').value.trim();
-            if (!reason) { alert('Alasan blokir wajib diisi!'); return; }
             try {
                 let userDoc = await db.collection('users').where('userId', '==', userId).get();
                 if (userDoc.empty) { alert('User tidak ditemukan'); return; }
                 let doc = userDoc.docs[0];
-                await doc.ref.update({ blocked: true, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
-                await db.collection('blocked').doc(doc.id).set({ userId: userId, name: doc.data().name, reason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
-                showToast(`🚫 User ${doc.data().name} diblokir`);
-                closeBlockModal();
-                loadAllData();
+                let userData = doc.data();
+                showStatusModal(action, userId, userData.name, doc.id);
             } catch(error) { showToast("Error: " + error.message); }
         }
 
-        function closeBlockModal() {
-            document.getElementById('blockModal').classList.remove('active');
-            pendingBlockUserId = null;
-        }
-
-        window.unblockUserById = async function(userId) {
-            if (!confirm('Yakin ingin membuka blokir user ini?')) return;
+        async function loadStatusList() {
             try {
-                let userDoc = await db.collection('users').where('userId', '==', userId).get();
-                if (userDoc.empty) return;
-                let doc = userDoc.docs[0];
-                await doc.ref.update({ blocked: false, blockedReason: null, blockedAt: null, blockedBy: null });
-                await db.collection('blocked').doc(doc.id).delete();
-                showToast(`✅ User ${doc.data().name} diunblock`);
-                loadAllData();
-            } catch(error) { showToast("Error: " + error.message); }
-        };
-
-        async function loadBlockedList() {
-            try {
-                let blockedSnap = await db.collection('blocked').get();
-                let container = document.getElementById('blockedList');
+                let blockedSnap = await db.collection('users').where('blocked', '==', true).get();
+                let disabledSnap = await db.collection('users').where('disabled', '==', true).get();
+                let container = document.getElementById('statusList');
                 if (!container) return;
-                if (blockedSnap.empty) { container.innerHTML = '<p>Tidak ada user diblokir</p>'; return; }
-                let html = '<h3>Daftar User Diblokir</h3>';
+                if (blockedSnap.empty && disabledSnap.empty) { container.innerHTML = '<p>Tidak ada user nonaktif/diblokir</p>'; return; }
+                let html = '<h3>Daftar User Nonaktif/Diblokir</h3>';
                 blockedSnap.forEach(doc => {
                     let data = doc.data();
-                    html += `<div class="blocked-user"><div><strong>${data.name || '-'}</strong> (${data.userId})<br><span class="danger">Alasan: ${data.reason || '-'}</span><br><small>Oleh: ${data.blockedBy} | ${new Date(data.blockedAt).toLocaleString()}</small></div><button class="btn-warning btn-sm" onclick="unblockUserById('${data.userId}')">Unblock</button></div>`;
+                    html += `<div class="status-card"><div><strong>${data.name || '-'}</strong> (${data.userId || '-'})<br><span class="danger">🔴 Diblokir</span><br>Alasan: ${data.blockedReason || '-'}<br><small>Oleh: ${data.blockedBy} | ${new Date(data.blockedAt).toLocaleString()}</small></div><button class="btn-success btn-sm" onclick="showStatusModal('enable', '${data.userId}', '${data.name}', '${doc.id}')">Aktifkan</button></div>`;
+                });
+                disabledSnap.forEach(doc => {
+                    let data = doc.data();
+                    html += `<div class="status-card"><div><strong>${data.name || '-'}</strong> (${data.userId || '-'})<br><span class="warning">🟡 Nonaktif</span><br>Alasan: ${data.disabledReason || '-'}<br><small>Oleh: ${data.disabledBy} | ${new Date(data.disabledAt).toLocaleString()}</small></div><button class="btn-success btn-sm" onclick="showStatusModal('enable', '${data.userId}', '${data.name}', '${doc.id}')">Aktifkan</button></div>`;
                 });
                 container.innerHTML = html;
             } catch(error) { console.error(error); }
         }
 
-        // ==================== HAPUS AKUN (DELETE USER) - DIPERBAIKI UNTUK SEMUA USER ====================
+        // ==================== HAPUS AKUN ====================
         function prepareDelete(userId, userName, docId) {
             pendingDeleteUser = { userId: userId, name: userName, docId: docId };
             document.getElementById('deleteUserName').innerHTML = `Hapus akun <strong>${userName}</strong> (${userId || 'tanpa ID'})?`;
@@ -564,55 +614,28 @@
             
             try {
                 let docRef;
-                let userFingerprint;
-                let userName = pendingDeleteUser.name;
-                
-                // PRIORITAS: pakai docId (UID dari Firestore)
                 if (pendingDeleteUser.docId && pendingDeleteUser.docId !== 'undefined') {
                     docRef = db.collection('users').doc(pendingDeleteUser.docId);
                     const doc = await docRef.get();
-                    if (!doc.exists) {
-                        alert('User tidak ditemukan');
-                        closeDeleteModal();
-                        return;
-                    }
-                    userFingerprint = pendingDeleteUser.docId;
-                }
-                // Jika tidak punya docId, cari berdasarkan userId
-                else if (pendingDeleteUser.userId && pendingDeleteUser.userId !== '-' && pendingDeleteUser.userId !== 'null' && pendingDeleteUser.userId !== 'undefined') {
+                    if (!doc.exists) { alert('User tidak ditemukan'); closeDeleteModal(); return; }
+                } else if (pendingDeleteUser.userId && pendingDeleteUser.userId !== '-' && pendingDeleteUser.userId !== 'null') {
                     let userDoc = await db.collection('users').where('userId', '==', pendingDeleteUser.userId).get();
-                    if (userDoc.empty) {
-                        alert('User tidak ditemukan');
-                        closeDeleteModal();
-                        return;
-                    }
+                    if (userDoc.empty) { alert('User tidak ditemukan'); closeDeleteModal(); return; }
                     docRef = userDoc.docs[0].ref;
-                    userFingerprint = userDoc.docs[0].id;
-                }
-                // Jika tidak punya keduanya, cari berdasarkan nama (resiko ambil salah satu)
-                else {
+                } else {
                     let userDoc = await db.collection('users').where('name', '==', pendingDeleteUser.name).limit(1).get();
-                    if (userDoc.empty) {
-                        alert('User tidak ditemukan');
-                        closeDeleteModal();
-                        return;
-                    }
+                    if (userDoc.empty) { alert('User tidak ditemukan'); closeDeleteModal(); return; }
                     docRef = userDoc.docs[0].ref;
-                    userFingerprint = userDoc.docs[0].id;
                     showToast(`⚠️ Peringatan: Menghapus user berdasarkan nama "${pendingDeleteUser.name}"`);
                 }
                 
                 const userSnapshot = await docRef.get();
-                const userData = userSnapshot.data();
+                const userFingerprint = userSnapshot.id;
                 
-                // Hapus dari collection users
                 await db.collection('users').doc(userFingerprint).delete();
-                // Hapus dari collection missions
                 await db.collection('missions').doc(userFingerprint).delete();
-                // Hapus dari collection blocked jika ada
                 await db.collection('blocked').doc(userFingerprint).delete();
                 
-                // Catat log penghapusan
                 await db.collection('deleted_logs').add({
                     userId: pendingDeleteUser.userId || '-',
                     name: pendingDeleteUser.name,
@@ -720,7 +743,7 @@
                     let user = doc.data();
                     totalUsers++;
                     let fingerprint = user.fingerprint || null;
-                    if (fingerprint && fingerprint !== '' && !user.blocked) {
+                    if (fingerprint && fingerprint !== '' && !user.blocked && !user.disabled) {
                         if (!fpMap.has(fingerprint)) fpMap.set(fingerprint, []);
                         fpMap.get(fingerprint).push({ name: user.name, userId: user.userId || '-', docId: doc.id });
                     }
@@ -755,7 +778,7 @@
                 let userDocs = await db.collection('users').where('fingerprint', '==', fingerprint).get();
                 let reason = 'Multiple account (melanggar aturan)';
                 for (let doc of userDocs.docs) {
-                    await doc.ref.update({ blocked: true, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
+                    await doc.ref.update({ blocked: true, disabled: false, blockedReason: reason, blockedAt: new Date().toISOString(), blockedBy: currentAdmin?.email || 'admin' });
                 }
                 showToast(`✅ ${userDocs.size} akun diblokir`);
                 loadAllData();
@@ -818,20 +841,20 @@
 
         setInterval(() => { if (currentAdmin) loadAllData(); }, 30000);
         
-        window.prepareBlock = prepareBlock;
-        window.confirmBlock = confirmBlock;
-        window.closeBlockModal = closeBlockModal;
+        window.prepareDelete = prepareDelete;
+        window.confirmDeleteUser = confirmDeleteUser;
+        window.closeDeleteModal = closeDeleteModal;
         window.toggleMaintenance = toggleMaintenance;
         window.updateMaintenanceMessage = updateMaintenanceMessage;
         window.blockAllByFingerprint = blockAllByFingerprint;
         window.markClaimed = markClaimed;
         window.extendPremium = extendPremium;
-        window.unblockUserById = unblockUserById;
         window.filterUsers = filterUsers;
         window.activatePremiumById = activatePremiumById;
-        window.prepareDelete = prepareDelete;
-        window.confirmDeleteUser = confirmDeleteUser;
-        window.closeDeleteModal = closeDeleteModal;
+        window.showStatusModal = showStatusModal;
+        window.confirmStatusChange = confirmStatusChange;
+        window.closeStatusModal = closeStatusModal;
+        window.changeUserStatus = changeUserStatus;
     </script>
 </body>
-</html>
+    </html>
