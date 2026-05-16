@@ -410,11 +410,10 @@
                 row.insertCell(3).innerHTML = isPremiumActive ? expiryText : '-';
                 row.insertCell(4).innerHTML = user.missionCompleted ? '✅ Selesai' : '❌ Belum';
                 row.insertCell(5).innerHTML = user.blocked ? '<span class="danger">Diblokir</span>' : '<span class="success">Aktif</span>';
-                // SEMUA AKUN memiliki tombol hapus (aktif maupun diblokir)
                 row.insertCell(6).innerHTML = `
                     <button class="btn btn-sm" onclick="extendPremium('${user.userId}')">➕ Perpanjang</button>
                     <button class="btn-danger btn-sm" onclick="prepareBlock('${user.userId}', '${user.name}')">🔨 Blokir</button>
-                    <button class="btn-delete btn-sm" onclick="prepareDelete('${user.userId}', '${user.name}')" style="background: #ff0050;">🗑️ Hapus Akun</button>
+                    <button class="btn-delete btn-sm" onclick="prepareDelete('${user.userId}', '${user.name}', '${user.uid}')" style="background: #ff0050;">🗑️ Hapus Akun</button>
                 `;
             });
         }
@@ -544,10 +543,10 @@
             } catch(error) { console.error(error); }
         }
 
-        // ==================== HAPUS AKUN (DELETE USER) - UNTUK SEMUA AKUN ====================
-        function prepareDelete(userId, userName) {
-            pendingDeleteUser = { userId: userId, name: userName };
-            document.getElementById('deleteUserName').innerHTML = `Hapus akun <strong>${userName}</strong> (${userId})?`;
+        // ==================== HAPUS AKUN (DELETE USER) - DIPERBAIKI UNTUK SEMUA USER ====================
+        function prepareDelete(userId, userName, docId) {
+            pendingDeleteUser = { userId: userId, name: userName, docId: docId };
+            document.getElementById('deleteUserName').innerHTML = `Hapus akun <strong>${userName}</strong> (${userId || 'tanpa ID'})?`;
             document.getElementById('deleteConfirmReason').value = '';
             document.getElementById('deleteModal').classList.add('active');
         }
@@ -564,10 +563,47 @@
             if (!confirm(`⚠️ PERINGATAN! Akun ${pendingDeleteUser.name} akan DIHAPUS PERMANEN!\n\nTindakan ini tidak dapat dibatalkan.\n\nYakin ingin menghapus?`)) return;
             
             try {
-                let userDoc = await db.collection('users').where('userId', '==', pendingDeleteUser.userId).get();
-                if (userDoc.empty) { alert('User tidak ditemukan'); closeDeleteModal(); return; }
-                let doc = userDoc.docs[0];
-                let userFingerprint = doc.id;
+                let docRef;
+                let userFingerprint;
+                let userName = pendingDeleteUser.name;
+                
+                // PRIORITAS: pakai docId (UID dari Firestore)
+                if (pendingDeleteUser.docId && pendingDeleteUser.docId !== 'undefined') {
+                    docRef = db.collection('users').doc(pendingDeleteUser.docId);
+                    const doc = await docRef.get();
+                    if (!doc.exists) {
+                        alert('User tidak ditemukan');
+                        closeDeleteModal();
+                        return;
+                    }
+                    userFingerprint = pendingDeleteUser.docId;
+                }
+                // Jika tidak punya docId, cari berdasarkan userId
+                else if (pendingDeleteUser.userId && pendingDeleteUser.userId !== '-' && pendingDeleteUser.userId !== 'null' && pendingDeleteUser.userId !== 'undefined') {
+                    let userDoc = await db.collection('users').where('userId', '==', pendingDeleteUser.userId).get();
+                    if (userDoc.empty) {
+                        alert('User tidak ditemukan');
+                        closeDeleteModal();
+                        return;
+                    }
+                    docRef = userDoc.docs[0].ref;
+                    userFingerprint = userDoc.docs[0].id;
+                }
+                // Jika tidak punya keduanya, cari berdasarkan nama (resiko ambil salah satu)
+                else {
+                    let userDoc = await db.collection('users').where('name', '==', pendingDeleteUser.name).limit(1).get();
+                    if (userDoc.empty) {
+                        alert('User tidak ditemukan');
+                        closeDeleteModal();
+                        return;
+                    }
+                    docRef = userDoc.docs[0].ref;
+                    userFingerprint = userDoc.docs[0].id;
+                    showToast(`⚠️ Peringatan: Menghapus user berdasarkan nama "${pendingDeleteUser.name}"`);
+                }
+                
+                const userSnapshot = await docRef.get();
+                const userData = userSnapshot.data();
                 
                 // Hapus dari collection users
                 await db.collection('users').doc(userFingerprint).delete();
@@ -578,7 +614,7 @@
                 
                 // Catat log penghapusan
                 await db.collection('deleted_logs').add({
-                    userId: pendingDeleteUser.userId,
+                    userId: pendingDeleteUser.userId || '-',
                     name: pendingDeleteUser.name,
                     fingerprint: userFingerprint,
                     reason: reason,
@@ -636,7 +672,7 @@
                 const winnersList = document.getElementById('winnersList');
                 if (!winnersList) return;
                 if (winners.length === 0) {
-                    winnersList.innerHTML = '<td><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
+                    winnersList.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada pemenang</td></tr>';
                 } else {
                     winnersList.innerHTML = winners.sort((a,b) => a.rank - b.rank).map(w => {
                         const rankIcon = w.rank === 1 ? '🏆' : (w.rank === 2 ? '🥈' : '🥉');
